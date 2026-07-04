@@ -1,1745 +1,2076 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SysCmd - 在 Minecraft 游戏内直接执行 Windows CMD 和 PowerShell 命令的超轻量 Fabric 模组">
-  <title>SysCmd - Minecraft 命令执行模组</title>
-  <link rel="preconnect" href="https://fonts.googleapis.cn">
-  <link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
-  <link href="https://fonts.googleapis.cn/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-/* ===== Reset & Base ===== */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SysCmd - 在 Minecraft 游戏内直接执行 Windows CMD 和 PowerShell 命令的超轻量 Fabric 模组">
+    <title>SysCmd - Minecraft 命令执行模组</title>
+    <link rel="preconnect" href="https://fonts.googleapis.cn">
+    <link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
+    <link href="https://fonts.googleapis.cn/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== Reset & Base ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-:root {
-  --bg-primary: #0a0e14;
-  --bg-secondary: #111820;
-  --bg-card: #151d28;
-  --green: #00ff88;
-  --cyan: #00d4ff;
-  --orange: #ff6b35;
-  --red: #ff4444;
-  --text-primary: #e0e6ed;
-  --text-secondary: #7a8a9e;
-  --font-title: 'Orbitron', sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --radius: 4px;
-  --radius-lg: 8px;
-}
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #111820;
+            --bg-card: #151d28;
+            --green: #00ff88;
+            --cyan: #00d4ff;
+            --orange: #ff6b35;
+            --red: #ff4444;
+            --text-primary: #e0e6ed;
+            --text-secondary: #7a8a9e;
+            --font-title: 'Orbitron', sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius: 4px;
+            --radius-lg: 8px;
+        }
 
-html { scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+        }
 
-body {
-  font-family: var(--font-body);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.6;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
 
-a { color: inherit; text-decoration: none; }
-ul { list-style: none; }
-img { max-width: 100%; display: block; }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+        ul {
+            list-style: none;
+        }
+        img {
+            max-width: 100%;
+            display: block;
+        }
 
-.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
 
-/* ===== Particle Canvas ===== */
-#particles {
-  position: fixed; top: 0; left: 0;
-  width: 100%; height: 100%;
-  z-index: 0; pointer-events: none;
-}
+        /* ===== Particle Canvas ===== */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
 
-/* ===== Navigation ===== */
-.navbar {
-  position: fixed; top: 0; left: 0; right: 0;
-  z-index: 100;
-  background: rgba(10, 14, 20, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 255, 136, 0.08);
-  transition: background 0.3s, box-shadow 0.3s;
-}
-.navbar.scrolled {
-  background: rgba(10, 14, 20, 0.95);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
-}
-.nav-container {
-  max-width: 1200px; margin: 0 auto;
-  padding: 0 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  height: 64px;
-}
-.nav-logo {
-  font-family: var(--font-title);
-  font-size: 1.1rem; font-weight: 700;
-  letter-spacing: 2px;
-}
-.logo-bracket { color: var(--green); }
-.logo-text { color: var(--text-primary); }
-.nav-links { display: flex; gap: 32px; }
-.nav-link {
-  font-size: 0.875rem; font-weight: 500;
-  color: var(--text-secondary);
-  transition: color 0.3s;
-  position: relative;
-}
-.nav-link::after {
-  content: ''; position: absolute;
-  bottom: -4px; left: 0; width: 0; height: 2px;
-  background: var(--green);
-  transition: width 0.3s;
-}
-.nav-link:hover { color: var(--green); }
-.nav-link:hover::after { width: 100%; }
+        /* ===== Navigation ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(10, 14, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.08);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .navbar.scrolled {
+            background: rgba(10, 14, 20, 0.95);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+        .nav-logo {
+            font-family: var(--font-title);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .logo-bracket {
+            color: var(--green);
+        }
+        .logo-text {
+            color: var(--text-primary);
+        }
+        .nav-links {
+            display: flex;
+            gap: 32px;
+        }
+        .nav-link {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.3s;
+            position: relative;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--green);
+            transition: width 0.3s;
+        }
+        .nav-link:hover {
+            color: var(--green);
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
 
-.nav-toggle {
-  display: none;
-  flex-direction: column; gap: 5px;
-  background: none; border: none; cursor: pointer; padding: 4px;
-}
-.nav-toggle span {
-  width: 24px; height: 2px;
-  background: var(--text-primary);
-  transition: all 0.3s;
-}
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .nav-toggle span {
+            width: 24px;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s;
+        }
 
-/* ===== Hero Section ===== */
-.hero {
-  position: relative;
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  padding: 120px 24px 80px;
-  z-index: 1;
-}
-.hero-content {
-  text-align: center;
-  max-width: 800px;
-}
-.hero-badge {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--green);
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  padding: 6px 16px;
-  border-radius: var(--radius);
-  margin-bottom: 32px;
-  background: rgba(0, 255, 136, 0.05);
-}
-.hero-title {
-  font-family: var(--font-title);
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 900;
-  line-height: 1.2;
-  margin-bottom: 24px;
-  letter-spacing: -0.5px;
-}
-.title-line { display: block; }
-.title-line.highlight {
-  background: linear-gradient(135deg, var(--green), var(--cyan));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.hero-desc {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  line-height: 1.8;
-  margin-bottom: 32px;
-}
-.hero-meta {
-  display: flex; justify-content: center; flex-wrap: wrap;
-  gap: 24px; margin-bottom: 40px;
-}
-.meta-item {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-.meta-icon { color: var(--green); font-size: 0.6rem; }
+        /* ===== Hero Section ===== */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 24px 80px;
+            z-index: 1;
+        }
+        .hero-content {
+            text-align: center;
+            max-width: 800px;
+        }
+        .hero-badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--green);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 6px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 32px;
+            background: rgba(0, 255, 136, 0.05);
+        }
+        .hero-title {
+            font-family: var(--font-title);
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+        }
+        .title-line {
+            display: block;
+        }
+        .title-line.highlight {
+            background: linear-gradient(135deg, var(--green), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-desc {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 32px;
+        }
+        .hero-meta {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .meta-icon {
+            color: var(--green);
+            font-size: 0.6rem;
+        }
 
-.hero-actions {
-  display: flex; justify-content: center; gap: 16px;
-  margin-bottom: 48px;
-}
-.btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 32px;
-  font-size: 0.95rem; font-weight: 600;
-  border-radius: var(--radius);
-  transition: all 0.3s;
-  cursor: pointer; border: none;
-  position: relative; overflow: hidden;
-}
-.btn-primary {
-  background: var(--green);
-  color: var(--bg-primary);
-}
-.btn-primary:hover {
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
-  transform: translateY(-2px);
-}
-.btn-primary::before {
-  content: '';
-  position: absolute; top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transition: left 0.5s;
-}
-.btn-primary:hover::before { left: 100%; }
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--text-secondary);
-  color: var(--text-primary);
-}
-.btn-outline:hover {
-  border-color: var(--cyan);
-  color: var(--cyan);
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
-}
-.btn-icon { font-size: 0.8rem; }
+        .hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: var(--radius);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary {
+            background: var(--green);
+            color: var(--bg-primary);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+            transform: translateY(-2px);
+        }
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+        }
+        .btn-icon {
+            font-size: 0.8rem;
+        }
 
-/* Hero Terminal */
-.hero-terminal {
-  max-width: 560px; margin: 0 auto;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid rgba(0, 255, 136, 0.15);
-  background: var(--bg-secondary);
-  text-align: left;
-}
-.terminal-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.terminal-dot {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-}
-.terminal-dot.red { background: #ff5f57; }
-.terminal-dot.yellow { background: #febc2e; }
-.terminal-dot.green { background: #28c840; }
-.terminal-title {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-}
-.terminal-body {
-  padding: 20px;
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-}
-.terminal-line { display: flex; align-items: center; }
-.prompt { color: var(--green); margin-right: 8px; font-weight: 700; }
-.command { color: var(--text-primary); }
-.cursor {
-  color: var(--green);
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  50% { opacity: 0; }
-}
+        /* Hero Terminal */
+        .hero-terminal {
+            max-width: 560px;
+            margin: 0 auto;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 136, 0.15);
+            background: var(--bg-secondary);
+            text-align: left;
+        }
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red {
+            background: #ff5f57;
+        }
+        .terminal-dot.yellow {
+            background: #febc2e;
+        }
+        .terminal-dot.green {
+            background: #28c840;
+        }
+        .terminal-title {
+            margin-left: auto;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .terminal-body {
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+        }
+        .terminal-line {
+            display: flex;
+            align-items: center;
+        }
+        .prompt {
+            color: var(--green);
+            margin-right: 8px;
+            font-weight: 700;
+        }
+        .command {
+            color: var(--text-primary);
+        }
+        .cursor {
+            color: var(--green);
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
 
-.scroll-indicator {
-  position: absolute; bottom: 32px; left: 50%;
-  transform: translateX(-50%);
-  animation: bounce 2s infinite;
-}
-.scroll-arrow {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-}
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
-  40% { transform: translateX(-50%) translateY(-10px); }
-  60% { transform: translateX(-50%) translateY(-5px); }
-}
+        .scroll-indicator {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+        .scroll-arrow {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+        @keyframes bounce {
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
 
-/* ===== Section Common ===== */
-.section {
-  position: relative;
-  padding: 100px 0;
-  z-index: 1;
-}
-.section-header {
-  text-align: center;
-  margin-bottom: 64px;
-}
-.section-tag {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--green);
-  letter-spacing: 3px;
-  margin-bottom: 16px;
-  text-transform: uppercase;
-}
-.section-tag.warning-tag { color: var(--orange); }
-.section-title {
-  font-family: var(--font-title);
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
-  font-weight: 700;
-  margin-bottom: 16px;
-}
-.section-desc {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  max-width: 500px;
-  margin: 0 auto;
-}
+        /* ===== Section Common ===== */
+        .section {
+            position: relative;
+            padding: 100px 0;
+            z-index: 1;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+        .section-tag {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--green);
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+        }
+        .section-tag.warning-tag {
+            color: var(--orange);
+        }
+        .section-title {
+            font-family: var(--font-title);
+            font-size: clamp(1.5rem, 3vw, 2.2rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
 
-/* ===== Features Grid ===== */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-.feature-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-lg);
-  padding: 32px 28px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-.feature-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--green), var(--cyan));
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-.feature-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(0, 255, 136, 0.2);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 136, 0.05);
-}
-.feature-card:hover::before { opacity: 1; }
+        /* ===== Features Grid ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-lg);
+            padding: 32px 28px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--green), var(--cyan));
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .feature-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 136, 0.05);
+        }
+        .feature-card:hover::before {
+            opacity: 1;
+        }
 
-.feature-icon {
-  width: 48px; height: 48px;
-  margin-bottom: 20px;
-  color: var(--green);
-}
-.feature-icon.cyan { color: var(--cyan); }
-.feature-icon svg { width: 100%; height: 100%; }
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 20px;
+            color: var(--green);
+        }
+        .feature-icon.cyan {
+            color: var(--cyan);
+        }
+        .feature-icon svg {
+            width: 100%;
+            height: 100%;
+        }
 
-.feature-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.feature-desc {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  margin-bottom: 16px;
-}
-.feature-tag {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--green);
-  background: rgba(0, 255, 136, 0.08);
-  padding: 4px 10px;
-  border-radius: var(--radius);
-  display: inline-block;
-}
-.feature-card:nth-child(even) .feature-tag {
-  color: var(--cyan);
-  background: rgba(0, 212, 255, 0.08);
-}
+        .feature-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .feature-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+        .feature-tag {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.08);
+            padding: 4px 10px;
+            border-radius: var(--radius);
+            display: inline-block;
+        }
+        .feature-card:nth-child(even) .feature-tag {
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
 
-/* ===== Download Section ===== */
-.download { background: var(--bg-secondary); }
+        /* ===== Download Section ===== */
+        .download {
+            background: var(--bg-secondary);
+        }
 
-.download-main {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 48px;
-}
-.download-btn {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 40px;
-  border: 2px solid var(--green);
-  border-radius: var(--radius-lg);
-  background: rgba(0, 255, 136, 0.05);
-  color: var(--green);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-}
-.download-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
-  transition: left 0.6s;
-}
-.download-btn:hover {
-  background: rgba(0, 255, 136, 0.12);
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.3), 0 0 60px rgba(0, 255, 136, 0.1), inset 0 0 20px rgba(0, 255, 136, 0.05);
-  transform: translateY(-2px);
-}
-.download-btn:hover::before { left: 100%; }
-.download-btn-icon {
-  width: 32px; height: 32px;
-  flex-shrink: 0;
-}
-.download-btn-icon svg { width: 100%; height: 100%; }
-.download-btn-text { display: flex; flex-direction: column; text-align: left; }
-.download-btn-label {
-  font-family: var(--font-title);
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-.download-btn-version {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
+        .download-main {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 48px;
+        }
+        .download-btn {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 40px;
+            border: 2px solid var(--green);
+            border-radius: var(--radius-lg);
+            background: rgba(0, 255, 136, 0.05);
+            color: var(--green);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
+            transition: left 0.6s;
+        }
+        .download-btn:hover {
+            background: rgba(0, 255, 136, 0.12);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3), 0 0 60px rgba(0, 255, 136, 0.1), inset 0 0 20px rgba(0, 255, 136, 0.05);
+            transform: translateY(-2px);
+        }
+        .download-btn:hover::before {
+            left: 100%;
+        }
+        .download-btn-icon {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+        .download-btn-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        .download-btn-text {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+        .download-btn-label {
+            font-family: var(--font-title);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .download-btn-version {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
 
-/* Download Sources */
-.download-sources { margin-bottom: 48px; }
-.sources-title {
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  font-family: var(--font-mono);
-}
-.sources-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  max-width: 700px;
-  margin: 0 auto;
-}
-.source-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius);
-  transition: all 0.3s;
-  cursor: pointer;
-}
-.source-link:hover {
-  border-color: rgba(0, 255, 136, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-.source-icon {
-  width: 20px; height: 20px;
-  color: var(--green);
-  flex-shrink: 0;
-}
-.source-icon svg { width: 100%; height: 100%; }
-.source-name {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  flex: 1;
-}
-.source-arrow {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  transition: color 0.3s, transform 0.3s;
-}
-.source-link:hover .source-arrow {
-  color: var(--green);
-  transform: translate(2px, -2px);
-}
+        /* Download Sources */
+        .download-sources {
+            margin-bottom: 48px;
+        }
+        .sources-title {
+            text-align: center;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+        }
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .source-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .source-link:hover {
+            border-color: rgba(0, 255, 136, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .source-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--green);
+            flex-shrink: 0;
+        }
+        .source-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        .source-name {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        .source-arrow {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            transition: color 0.3s, transform 0.3s;
+        }
+        .source-link:hover .source-arrow {
+            color: var(--green);
+            transform: translate(2px, -2px);
+        }
 
-/* Quick Install Steps */
-.quick-install { margin-bottom: 48px; }
-.quick-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  max-width: 750px;
-  margin: 0 auto;
-}
-.quick-step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-lg);
-  flex: 1;
-  transition: all 0.3s;
-}
-.quick-step:hover {
-  border-color: rgba(0, 255, 136, 0.15);
-}
-.qs-number {
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 255, 136, 0.1);
-  color: var(--green);
-  font-family: var(--font-title);
-  font-size: 0.9rem;
-  font-weight: 700;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.qs-content { flex: 1; }
-.qs-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-.qs-desc {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-.qs-arrow {
-  color: var(--green);
-  font-size: 1.2rem;
-  opacity: 0.5;
-  flex-shrink: 0;
-}
+        /* Quick Install Steps */
+        .quick-install {
+            margin-bottom: 48px;
+        }
+        .quick-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            max-width: 750px;
+            margin: 0 auto;
+        }
+        .quick-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 22px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-lg);
+            flex: 1;
+            transition: all 0.3s;
+        }
+        .quick-step:hover {
+            border-color: rgba(0, 255, 136, 0.15);
+        }
+        .qs-number {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--green);
+            font-family: var(--font-title);
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .qs-content {
+            flex: 1;
+        }
+        .qs-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .qs-desc {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .qs-arrow {
+            color: var(--green);
+            font-size: 1.2rem;
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
 
-/* Requirements */
-.requirements { max-width: 500px; margin: 0 auto; }
-.req-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-.req-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius);
-}
-.req-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-.req-value {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--green);
-  font-weight: 600;
-}
+        /* Requirements */
+        .requirements {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .req-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .req-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+        }
+        .req-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .req-value {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            color: var(--green);
+            font-weight: 600;
+        }
 
-/* ===== Commands Section ===== */
-.commands { background: var(--bg-secondary); }
-.commands-list {
-  display: flex; flex-direction: column;
-  gap: 12px; max-width: 800px; margin: 0 auto;
-}
-.command-item {
-  display: flex; align-items: center; gap: 20px;
-  padding: 18px 24px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: var(--radius);
-  transition: all 0.3s;
-}
-.command-item:hover {
-  border-color: rgba(0, 255, 136, 0.2);
-  transform: translateX(4px);
-}
-.command-syntax {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.cmd-prefix { color: var(--green); font-weight: 700; }
-.cmd-args { color: var(--cyan); margin-left: 6px; }
-.command-desc {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  flex: 1;
-}
-.command-env {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  padding: 3px 8px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-}
-.command-env.cmd { color: var(--green); background: rgba(0,255,136,0.1); }
-.command-env.ps { color: var(--cyan); background: rgba(0,212,255,0.1); }
-.command-env.alias { color: #a78bfa; background: rgba(167,139,250,0.1); }
-.command-env.script { color: var(--orange); background: rgba(255,107,53,0.1); }
-.command-env.history { color: #fbbf24; background: rgba(251,191,36,0.1); }
-.command-env.sysinfo { color: var(--cyan); background: rgba(0,212,255,0.1); }
-.command-env.save { color: #34d399; background: rgba(52,211,153,0.1); }
-.command-env.analyze { color: var(--red); background: rgba(255,68,68,0.1); }
+        /* ===== Commands Section ===== */
+        .commands {
+            background: var(--bg-secondary);
+        }
+        .commands-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .command-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 18px 24px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius);
+            transition: all 0.3s;
+        }
+        .command-item:hover {
+            border-color: rgba(0, 255, 136, 0.2);
+            transform: translateX(4px);
+        }
+        .command-syntax {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .cmd-prefix {
+            color: var(--green);
+            font-weight: 700;
+        }
+        .cmd-args {
+            color: var(--cyan);
+            margin-left: 6px;
+        }
+        .command-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        .command-env {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: var(--radius);
+            flex-shrink: 0;
+        }
+        .command-env.cmd {
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+        .command-env.ps {
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .command-env.alias {
+            color: #a78bfa;
+            background: rgba(167, 139, 250, 0.1);
+        }
+        .command-env.script {
+            color: var(--orange);
+            background: rgba(255, 107, 53, 0.1);
+        }
+        .command-env.history {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+        .command-env.sysinfo {
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .command-env.save {
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.1);
+        }
+        .command-env.analyze {
+            color: var(--red);
+            background: rgba(255, 68, 68, 0.1);
+        }
 
-/* ===== Security Section ===== */
-.security-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-.security-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-lg);
-  padding: 32px 28px;
-  text-align: center;
-  transition: all 0.4s;
-}
-.security-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(0, 255, 136, 0.15);
-}
-.security-icon {
-  width: 56px; height: 56px;
-  margin: 0 auto 20px;
-  color: var(--green);
-}
-.security-icon.warning { color: var(--orange); }
-.security-icon.danger { color: var(--red); }
-.security-icon svg { width: 100%; height: 100%; }
-.security-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.security-desc {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  margin-bottom: 24px;
-}
-.security-visual {
-  background: rgba(0,0,0,0.3);
-  border-radius: var(--radius);
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,0.05);
-}
+        /* ===== Security Section ===== */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .security-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-lg);
+            padding: 32px 28px;
+            text-align: center;
+            transition: all 0.4s;
+        }
+        .security-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 255, 136, 0.15);
+        }
+        .security-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 20px;
+            color: var(--green);
+        }
+        .security-icon.warning {
+            color: var(--orange);
+        }
+        .security-icon.danger {
+            color: var(--red);
+        }
+        .security-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        .security-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .security-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+        .security-visual {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius);
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-/* Confirm dialog visual */
-.confirm-dialog { text-align: left; }
-.confirm-header {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.confirm-body {
-  font-size: 0.8rem;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-}
-.confirm-body code {
-  font-family: var(--font-mono);
-  color: var(--orange);
-  background: rgba(255,107,53,0.1);
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-.confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.confirm-btn {
-  padding: 4px 14px;
-  font-size: 0.75rem;
-  border-radius: var(--radius);
-  border: none; cursor: pointer;
-  font-weight: 600;
-}
-.confirm-btn.cancel { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
-.confirm-btn.ok { background: var(--green); color: var(--bg-primary); }
+        /* Confirm dialog visual */
+        .confirm-dialog {
+            text-align: left;
+        }
+        .confirm-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .confirm-body {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .confirm-body code {
+            font-family: var(--font-mono);
+            color: var(--orange);
+            background: rgba(255, 107, 53, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .confirm-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .confirm-btn {
+            padding: 4px 14px;
+            font-size: 0.75rem;
+            border-radius: var(--radius);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .confirm-btn.cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+        }
+        .confirm-btn.ok {
+            background: var(--green);
+            color: var(--bg-primary);
+        }
 
-/* Blocked list visual */
-.blocked-list { text-align: left; }
-.blocked-item {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  padding: 6px 0;
-  color: var(--red);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-.blocked-item:last-child { border-bottom: none; }
-.blocked-item.safe { color: var(--green); }
-.block-icon { margin-right: 8px; }
+        /* Blocked list visual */
+        .blocked-list {
+            text-align: left;
+        }
+        .blocked-item {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            padding: 6px 0;
+            color: var(--red);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .blocked-item:last-child {
+            border-bottom: none;
+        }
+        .blocked-item.safe {
+            color: var(--green);
+        }
+        .block-icon {
+            margin-right: 8px;
+        }
 
-/* Server status visual */
-.server-status { text-align: left; }
-.status-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-.status-row:last-child { border-bottom: none; }
-.status-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-.status-badge {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  padding: 3px 10px;
-  border-radius: var(--radius);
-  font-weight: 600;
-}
-.status-badge.enabled { color: var(--green); background: rgba(0,255,136,0.1); }
-.status-badge.disabled { color: var(--red); background: rgba(255,68,68,0.1); }
+        /* Server status visual */
+        .server-status {
+            text-align: left;
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .status-row:last-child {
+            border-bottom: none;
+        }
+        .status-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .status-badge {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            padding: 3px 10px;
+            border-radius: var(--radius);
+            font-weight: 600;
+        }
+        .status-badge.enabled {
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+        .status-badge.disabled {
+            color: var(--red);
+            background: rgba(255, 68, 68, 0.1);
+        }
 
-/* ===== Installation Section ===== */
-.install { background: var(--bg-secondary); }
-.install-steps {
-  max-width: 700px;
-  margin: 0 auto;
-  display: flex; flex-direction: column;
-  gap: 32px;
-}
-.install-step {
-  display: flex; align-items: flex-start; gap: 24px;
-  padding: 28px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s;
-}
-.install-step:hover {
-  border-color: rgba(0, 255, 136, 0.2);
-  transform: translateX(4px);
-}
-.step-number {
-  font-family: var(--font-title);
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--green);
-  opacity: 0.6;
-  flex-shrink: 0;
-  line-height: 1;
-}
-.step-content { flex: 1; }
-.step-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.step-desc {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-}
-.inline-code {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--green);
-  background: rgba(0,255,136,0.08);
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-.step-visual { flex-shrink: 0; }
-.mini-terminal {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  background: rgba(0,0,0,0.3);
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255,255,255,0.05);
-  white-space: nowrap;
-}
-.mt-prompt { color: var(--green); margin-right: 6px; }
+        /* ===== Installation Section ===== */
+        .install {
+            background: var(--bg-secondary);
+        }
+        .install-steps {
+            max-width: 700px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        .install-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 28px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-lg);
+            transition: all 0.3s;
+        }
+        .install-step:hover {
+            border-color: rgba(0, 255, 136, 0.2);
+            transform: translateX(4px);
+        }
+        .step-number {
+            font-family: var(--font-title);
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--green);
+            opacity: 0.6;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .step-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .inline-code {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.08);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .step-visual {
+            flex-shrink: 0;
+        }
+        .mini-terminal {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+        }
+        .mt-prompt {
+            color: var(--green);
+            margin-right: 6px;
+        }
 
-/* ===== Warnings Section ===== */
-.warnings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-.warning-card {
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  border: 1px solid;
-}
-.warning-card.caution {
-  background: rgba(255, 107, 53, 0.04);
-  border-color: rgba(255, 107, 53, 0.2);
-}
-.warning-card.danger {
-  background: rgba(255, 68, 68, 0.04);
-  border-color: rgba(255, 68, 68, 0.2);
-}
-.warning-header {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 20px;
-}
-.warning-icon { font-size: 1.3rem; }
-.warning-card.caution .warning-header { color: var(--orange); }
-.warning-card.danger .warning-header { color: var(--red); }
-.warning-list { display: flex; flex-direction: column; gap: 12px; }
-.warning-list li {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  padding-left: 16px;
-  position: relative;
-}
-.warning-list li::before {
-  content: '>';
-  position: absolute; left: 0;
-  font-family: var(--font-mono);
-  color: inherit;
-  opacity: 0.5;
-}
+        /* ===== Warnings Section ===== */
+        .warnings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .warning-card {
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            border: 1px solid;
+        }
+        .warning-card.caution {
+            background: rgba(255, 107, 53, 0.04);
+            border-color: rgba(255, 107, 53, 0.2);
+        }
+        .warning-card.danger {
+            background: rgba(255, 68, 68, 0.04);
+            border-color: rgba(255, 68, 68, 0.2);
+        }
+        .warning-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .warning-icon {
+            font-size: 1.3rem;
+        }
+        .warning-card.caution .warning-header {
+            color: var(--orange);
+        }
+        .warning-card.danger .warning-header {
+            color: var(--red);
+        }
+        .warning-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .warning-list li {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding-left: 16px;
+            position: relative;
+        }
+        .warning-list li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            font-family: var(--font-mono);
+            color: inherit;
+            opacity: 0.5;
+        }
 
-/* ===== Footer ===== */
-.footer {
-  position: relative; z-index: 1;
-  padding: 48px 0;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  background: var(--bg-primary);
-}
-.footer-content { text-align: center; }
-.footer-brand {
-  font-family: var(--font-title);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin-bottom: 20px;
-}
-.footer-info {
-  display: flex; flex-direction: column; gap: 6px;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-}
-.footer-highlight { color: var(--green); font-weight: 600; }
-.footer-divider {
-  width: 60px; height: 1px;
-  background: rgba(255,255,255,0.1);
-  margin: 20px auto;
-}
-.footer-copyright {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  opacity: 0.6;
-}
+        /* ===== Footer ===== */
+        .footer {
+            position: relative;
+            z-index: 1;
+            padding: 48px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background: var(--bg-primary);
+        }
+        .footer-content {
+            text-align: center;
+        }
+        .footer-brand {
+            font-family: var(--font-title);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+        .footer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        .footer-highlight {
+            color: var(--green);
+            font-weight: 600;
+        }
+        .footer-divider {
+            width: 60px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 20px auto;
+        }
+        .footer-copyright {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
 
-/* ===== Animations ===== */
-.animate-in {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-.animate-in.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+        /* ===== Animations ===== */
+        .animate-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-.fade-up {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-.fade-up.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+        .fade-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-/* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
-  .security-grid { grid-template-columns: repeat(2, 1fr); }
-  .security-card:last-child {
-    grid-column: 1 / -1;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-  .sources-grid { grid-template-columns: repeat(2, 1fr); }
-  .quick-steps { flex-wrap: wrap; }
-  .qs-arrow { display: none; }
-}
+        /* ===== Responsive ===== */
+        @media (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .security-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .security-card:last-child {
+                grid-column: 1 / -1;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .sources-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .quick-steps {
+                flex-wrap: wrap;
+            }
+            .qs-arrow {
+                display: none;
+            }
+        }
 
-@media (max-width: 768px) {
-  .nav-links {
-    display: none;
-    position: absolute; top: 64px; left: 0; right: 0;
-    flex-direction: column;
-    background: rgba(10, 14, 20, 0.98);
-    padding: 24px;
-    gap: 20px;
-    border-bottom: 1px solid rgba(0,255,136,0.1);
-  }
-  .nav-links.active { display: flex; }
-  .nav-toggle { display: flex; }
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 64px;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                background: rgba(10, 14, 20, 0.98);
+                padding: 24px;
+                gap: 20px;
+                border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .nav-toggle {
+                display: flex;
+            }
 
-  .hero { padding: 100px 20px 60px; }
-  .hero-title { font-size: 1.8rem; }
-  .hero-desc { font-size: 0.95rem; }
-  .hero-meta { gap: 16px; }
-  .hero-actions { flex-direction: column; align-items: center; }
-  .btn { width: 100%; max-width: 280px; justify-content: center; }
+            .hero {
+                padding: 100px 20px 60px;
+            }
+            .hero-title {
+                font-size: 1.8rem;
+            }
+            .hero-desc {
+                font-size: 0.95rem;
+            }
+            .hero-meta {
+                gap: 16px;
+            }
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 280px;
+                justify-content: center;
+            }
 
-  .section { padding: 64px 0; }
-  .section-header { margin-bottom: 40px; }
+            .section {
+                padding: 64px 0;
+            }
+            .section-header {
+                margin-bottom: 40px;
+            }
 
-  .features-grid { grid-template-columns: 1fr; }
-  .security-grid { grid-template-columns: 1fr; }
-  .security-card:last-child { max-width: none; }
-  .sources-grid { grid-template-columns: repeat(2, 1fr); }
-  .quick-steps { flex-direction: column; }
-  .req-list { grid-template-columns: 1fr; }
-  .download-btn { padding: 16px 28px; }
-  .download-btn-label { font-size: 1rem; }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .security-grid {
+                grid-template-columns: 1fr;
+            }
+            .security-card:last-child {
+                max-width: none;
+            }
+            .sources-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .quick-steps {
+                flex-direction: column;
+            }
+            .req-list {
+                grid-template-columns: 1fr;
+            }
+            .download-btn {
+                padding: 16px 28px;
+            }
+            .download-btn-label {
+                font-size: 1rem;
+            }
 
-  .command-item {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 14px 16px;
-  }
-  .command-syntax { font-size: 0.8rem; }
-  .command-desc { flex-basis: 100%; order: 3; }
+            .command-item {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 14px 16px;
+            }
+            .command-syntax {
+                font-size: 0.8rem;
+            }
+            .command-desc {
+                flex-basis: 100%;
+                order: 3;
+            }
 
-  .install-step {
-    flex-direction: column;
-    gap: 16px;
-  }
-  .step-visual { align-self: flex-start; }
+            .install-step {
+                flex-direction: column;
+                gap: 16px;
+            }
+            .step-visual {
+                align-self: flex-start;
+            }
 
-  .warnings-grid { grid-template-columns: 1fr; }
-}
+            .warnings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
-@media (max-width: 480px) {
-  .hero-title { font-size: 1.5rem; }
-  .meta-item { font-size: 0.75rem; }
-  .feature-card { padding: 24px 20px; }
-}
-
-  </style>
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 1.5rem;
+            }
+            .meta-item {
+                font-size: 0.75rem;
+            }
+            .feature-card {
+                padding: 24px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <!-- Particle Background -->
-  <canvas id="particles"></canvas>
+    <!-- Particle Background -->
+    <canvas id="particles"></canvas>
 
-  <!-- Navigation -->
-  <nav class="navbar" id="navbar">
-    <div class="nav-container">
-      <a href="#" class="nav-logo">
-        <span class="logo-bracket">[</span>
-        <span class="logo-text">SysCmd</span>
-        <span class="logo-bracket">]</span>
-      </a>
-      <div class="nav-links" id="navLinks">
-        <a href="#features" class="nav-link">功能</a>
-        <a href="#commands" class="nav-link">命令</a>
-        <a href="#security" class="nav-link">安全</a>
-        <a href="#install" class="nav-link">安装</a>
-        <a href="#warnings" class="nav-link">注意</a>
-      </div>
-      <button class="nav-toggle" id="navToggle" aria-label="菜单">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- Hero Section -->
-  <section class="hero" id="hero">
-    <div class="hero-content">
-      <div class="hero-badge animate-in">Fabric Mod · v1.3 · MC 1.20.1</div>
-      <h1 class="hero-title animate-in">
-        <span class="title-line">在 Minecraft 中</span>
-        <span class="title-line highlight">执行系统命令</span>
-      </h1>
-      <p class="hero-desc animate-in">
-        SysCmd 是一款超轻量的 Fabric 模组，让你无需退出游戏即可直接执行 Windows CMD 和 PowerShell 命令。
-        <br>告别 Alt+Tab，命令就在眼前。
-      </p>
-      <div class="hero-meta animate-in">
-        <div class="meta-item">
-          <span class="meta-icon">&#9670;</span>
-          <span>版本 1.3</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">&#9670;</span>
-          <span>MC 1.20.1</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">&#9670;</span>
-          <span>Fabric</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon">&#9670;</span>
-          <span>~0.1 MB</span>
-        </div>
-      </div>
-      <div class="hero-actions animate-in">
-        <a href="#install" class="btn btn-primary">
-          <span class="btn-icon">&#9654;</span>
-          立即下载
-        </a>
-        <a href="#features" class="btn btn-outline">了解更多</a>
-      </div>
-      <div class="hero-terminal animate-in">
-        <div class="terminal-header">
-          <span class="terminal-dot red"></span>
-          <span class="terminal-dot yellow"></span>
-          <span class="terminal-dot green"></span>
-          <span class="terminal-title">SysCmd Terminal</span>
-        </div>
-        <div class="terminal-body">
-          <div class="terminal-line">
-            <span class="prompt">MC&gt;</span>
-            <span class="command" id="typewriter"></span>
-            <span class="cursor">_</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="scroll-indicator">
-      <span class="scroll-arrow">&#9660;</span>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section class="section features" id="features">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">FEATURES</span>
-        <h2 class="section-title">核心功能</h2>
-        <p class="section-desc">九大功能模块，覆盖你在游戏内的一切系统操作需求</p>
-      </div>
-      <div class="features-grid">
-        <div class="feature-card" data-delay="0">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="4 17 10 11 4 5"></polyline>
-              <line x1="12" y1="19" x2="20" y2="19"></line>
-            </svg>
-          </div>
-          <h3 class="feature-title">双命令系统</h3>
-          <p class="feature-desc">同时支持 CMD 和 PowerShell 两种命令环境，一键切换，灵活应对不同场景需求。</p>
-          <div class="feature-tag">CMD / PowerShell</div>
-        </div>
-        <div class="feature-card" data-delay="100">
-          <div class="feature-icon cyan">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-          </div>
-          <h3 class="feature-title">系统信息查询</h3>
-          <p class="feature-desc">快速查看 CPU、内存、磁盘、网络等系统信息，游戏内即可掌握电脑运行状态。</p>
-          <div class="feature-tag">System Info</div>
-        </div>
-        <div class="feature-card" data-delay="200">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <h3 class="feature-title">文件管理</h3>
-          <p class="feature-desc">在游戏内浏览、创建、删除文件和目录，无需切出游戏即可完成基本文件操作。</p>
-          <div class="feature-tag">File Manager</div>
-        </div>
-        <div class="feature-card" data-delay="300">
-          <div class="feature-icon cyan">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-            </svg>
-          </div>
-          <h3 class="feature-title">实用工具箱</h3>
-          <p class="feature-desc">内置多种实用工具：进程管理、环境变量查看、网络诊断等，一站式解决常见需求。</p>
-          <div class="feature-tag">Toolbox</div>
-        </div>
-        <div class="feature-card" data-delay="400">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-              <line x1="7" y1="7" x2="7.01" y2="7"></line>
-            </svg>
-          </div>
-          <h3 class="feature-title">命令别名</h3>
-          <p class="feature-desc">为常用命令设置简短别名，减少重复输入，大幅提升操作效率。</p>
-          <div class="feature-tag">Alias</div>
-        </div>
-        <div class="feature-card" data-delay="500">
-          <div class="feature-icon cyan">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-          </div>
-          <h3 class="feature-title">脚本执行</h3>
-          <p class="feature-desc">支持直接执行 .bat、.ps1 等脚本文件，批量操作一气呵成。</p>
-          <div class="feature-tag">Script Runner</div>
-        </div>
-        <div class="feature-card" data-delay="600">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-          </div>
-          <h3 class="feature-title">输出保存</h3>
-          <p class="feature-desc">命令执行结果可自动保存到文件，方便后续查看和分析。</p>
-          <div class="feature-tag">Output Save</div>
-        </div>
-        <div class="feature-card" data-delay="700">
-          <div class="feature-icon cyan">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-          </div>
-          <h3 class="feature-title">失败分析</h3>
-          <p class="feature-desc">命令执行失败时自动分析错误原因，提供修复建议，降低排错成本。</p>
-          <div class="feature-tag">Error Analysis</div>
-        </div>
-        <div class="feature-card" data-delay="800">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </div>
-          <h3 class="feature-title">历史记录</h3>
-          <p class="feature-desc">完整记录所有执行过的命令，支持搜索和快速复用，告别重复输入。</p>
-          <div class="feature-tag">History</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Download Section -->
-  <section class="section download" id="download">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">DOWNLOAD</span>
-        <h2 class="section-title">下载与安装</h2>
-        <p class="section-desc">选择你喜欢的下载方式，三步即可开始使用</p>
-      </div>
-
-      <!-- Main Download Button -->
-      <div class="download-main">
-        <a href="#" class="download-btn" onclick="return false;">
-          <span class="download-btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </span>
-          <span class="download-btn-text">
-            <span class="download-btn-label">下载 SysCmd</span>
-            <span class="download-btn-version">v1.3 · Fabric · MC 1.20.1 · ~0.1MB</span>
-          </span>
-        </a>
-      </div>
-
-      <!-- Download Sources -->
-      <div class="download-sources">
-        <h3 class="sources-title">其他下载渠道</h3>
-        <div class="sources-grid">
-          <a href="#" class="source-link" onclick="return false;">
-            <span class="source-icon">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </span>
-            <span class="source-name">CurseForge</span>
-            <span class="source-arrow">&#8599;</span>
-          </a>
-          <a href="#" class="source-link" onclick="return false;">
-            <span class="source-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8v8H8z"/></svg>
-            </span>
-            <span class="source-name">Modrinth</span>
-            <span class="source-arrow">&#8599;</span>
-          </a>
-          <a href="#" class="source-link" onclick="return false;">
-            <span class="source-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-            </span>
-            <span class="source-name">GitHub Releases</span>
-            <span class="source-arrow">&#8599;</span>
-          </a>
-          <a href="#" class="source-link" onclick="return false;">
-            <span class="source-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            </span>
-            <span class="source-name">蓝奏云网盘</span>
-            <span class="source-arrow">&#8599;</span>
-          </a>
-        </div>
-      </div>
-
-      <!-- Quick Install Steps -->
-      <div class="quick-install">
-        <h3 class="sources-title">快速安装</h3>
-        <div class="quick-steps">
-          <div class="quick-step">
-            <div class="qs-number">1</div>
-            <div class="qs-content">
-              <h4 class="qs-title">安装 Fabric</h4>
-              <p class="qs-desc">安装 Minecraft 1.20.1 和 Fabric Loader</p>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <span class="logo-bracket">[</span>
+                <span class="logo-text">SysCmd</span>
+                <span class="logo-bracket">]</span>
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="#features" class="nav-link">功能</a>
+                <a href="#commands" class="nav-link">命令</a>
+                <a href="#security" class="nav-link">安全</a>
+                <a href="#install" class="nav-link">安装</a>
+                <a href="#warnings" class="nav-link">注意</a>
             </div>
-          </div>
-          <div class="qs-arrow">&#10132;</div>
-          <div class="quick-step">
-            <div class="qs-number">2</div>
-            <div class="qs-content">
-              <h4 class="qs-title">放入 mods</h4>
-              <p class="qs-desc">将 jar 文件拖入 .minecraft/mods</p>
+            <button class="nav-toggle" id="navToggle" aria-label="菜单">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-content">
+            <div class="hero-badge animate-in">Fabric Mod · v1.3 · MC 1.20.1</div>
+            <h1 class="hero-title animate-in">
+                <span class="title-line">在 Minecraft 中</span>
+                <span class="title-line highlight">执行系统命令</span>
+            </h1>
+            <p class="hero-desc animate-in">
+                SysCmd 是一款超轻量的 Fabric 模组，让你无需退出游戏即可直接执行 Windows CMD 和 PowerShell 命令。
+                <br>告别 Alt+Tab，命令就在眼前。
+            </p>
+            <div class="hero-meta animate-in">
+                <div class="meta-item">
+                    <span class="meta-icon">♦</span>
+                    <span>版本 1.3</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">♦</span>
+                    <span>MC 1.20.1</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">♦</span>
+                    <span>Fabric</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-icon">♦</span>
+                    <span>~0.1 MB</span>
+                </div>
             </div>
-          </div>
-          <div class="qs-arrow">&#10132;</div>
-          <div class="quick-step">
-            <div class="qs-number">3</div>
-            <div class="qs-content">
-              <h4 class="qs-title">开玩</h4>
-              <p class="qs-desc">启动游戏，输入 /cmd 即可使用</p>
+            <div class="hero-actions animate-in">
+                <a href="#install" class="btn btn-primary">
+                    <span class="btn-icon">►</span>
+                    立即下载
+                </a>
+                <a href="#features" class="btn btn-outline">了解更多</a>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Requirements -->
-      <div class="requirements">
-        <h3 class="sources-title">环境要求</h3>
-        <div class="req-list">
-          <div class="req-item">
-            <span class="req-label">Minecraft</span>
-            <span class="req-value">1.20.1</span>
-          </div>
-          <div class="req-item">
-            <span class="req-label">Fabric Loader</span>
-            <span class="req-value">&ge; 0.15.0</span>
-          </div>
-          <div class="req-item">
-            <span class="req-label">操作系统</span>
-            <span class="req-value">Windows</span>
-          </div>
-          <div class="req-item">
-            <span class="req-label">Java</span>
-            <span class="req-value">17+</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Commands Section -->
-  <section class="section commands" id="commands">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">REFERENCE</span>
-        <h2 class="section-title">命令速查</h2>
-        <p class="section-desc">常用命令一览，快速上手</p>
-      </div>
-      <div class="commands-list">
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd</span>
-            <span class="cmd-args">&lt;command&gt;</span>
-          </div>
-          <p class="command-desc">在 CMD 环境中执行指定命令</p>
-          <span class="command-env cmd">CMD</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/ps</span>
-            <span class="cmd-args">&lt;command&gt;</span>
-          </div>
-          <p class="command-desc">在 PowerShell 环境中执行指定命令</p>
-          <span class="command-env ps">PowerShell</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd alias</span>
-            <span class="cmd-args">&lt;name&gt; &lt;command&gt;</span>
-          </div>
-          <p class="command-desc">创建命令别名，简化常用操作</p>
-          <span class="command-env alias">Alias</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd run</span>
-            <span class="cmd-args">&lt;script.bat&gt;</span>
-          </div>
-          <p class="command-desc">执行指定的脚本文件</p>
-          <span class="command-env script">Script</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd history</span>
-          </div>
-          <p class="command-desc">查看命令执行历史记录</p>
-          <span class="command-env history">History</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd sysinfo</span>
-          </div>
-          <p class="command-desc">查看系统信息概览</p>
-          <span class="command-env sysinfo">System</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd save</span>
-            <span class="cmd-args">&lt;filename&gt;</span>
-          </div>
-          <p class="command-desc">将上次命令输出保存到文件</p>
-          <span class="command-env save">Save</span>
-        </div>
-        <div class="command-item">
-          <div class="command-syntax">
-            <span class="cmd-prefix">/cmd analyze</span>
-          </div>
-          <p class="command-desc">分析上次失败命令的错误原因</p>
-          <span class="command-env analyze">Analyze</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Security Section -->
-  <section class="section security" id="security">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">SAFETY</span>
-        <h2 class="section-title">安全机制</h2>
-        <p class="section-desc">多重保护，让每一次命令执行都安全可控</p>
-      </div>
-      <div class="security-grid">
-        <div class="security-card">
-          <div class="security-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-          </div>
-          <h3 class="security-title">二次确认</h3>
-          <p class="security-desc">执行系统命令前会弹出确认提示，防止误操作。你可以选择确认执行或取消操作，确保每一步都在掌控之中。</p>
-          <div class="security-visual">
-            <div class="confirm-dialog">
-              <div class="confirm-header">SysCmd</div>
-              <div class="confirm-body">确认执行命令?<br><code>del temp.txt</code></div>
-              <div class="confirm-actions">
-                <button class="confirm-btn cancel">取消</button>
-                <button class="confirm-btn ok">确认</button>
-              </div>
+            <div class="hero-terminal animate-in">
+                <div class="terminal-header">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                    <span class="terminal-title">SysCmd Terminal</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="terminal-line">
+                        <span class="prompt">MC&gt;</span>
+                        <span class="command" id="typewriter"></span>
+                        <span class="cursor">_</span>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-        <div class="security-card">
-          <div class="security-icon warning">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 6a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h3 class="security-title">危险命令拦截</h3>
-          <p class="security-desc">内置危险命令黑名单，自动拦截格式化磁盘、删除系统文件等高危操作，从源头杜绝灾难性误操作。</p>
-          <div class="security-visual">
-            <div class="blocked-list">
-              <div class="blocked-item"><span class="block-icon">&#10006;</span> format C:</div>
-              <div class="blocked-item"><span class="block-icon">&#10006;</span> del /f /s /q C:\*</div>
-              <div class="blocked-item"><span class="block-icon">&#10006;</span> rd /s /q C:\Windows</div>
-              <div class="blocked-item safe"><span class="block-icon">&#10004;</span> dir / ipconfig / ...</div>
+        <div class="scroll-indicator">
+            <span class="scroll-arrow">▼</span>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">FEATURES</span>
+                <h2 class="section-title">核心功能</h2>
+                <p class="section-desc">九大功能模块，覆盖你在游戏内的一切系统操作需求</p>
             </div>
-          </div>
-        </div>
-        <div class="security-card">
-          <div class="security-icon danger">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-            </svg>
-          </div>
-          <h3 class="security-title">服务端禁用</h3>
-          <p class="security-desc">在多人服务器环境中自动禁用所有命令执行功能，防止恶意利用，保障服务器安全与其他玩家体验。</p>
-          <div class="security-visual">
-            <div class="server-status">
-              <div class="status-row">
-                <span class="status-label">单人模式</span>
-                <span class="status-badge enabled">已启用</span>
-              </div>
-              <div class="status-row">
-                <span class="status-label">局域网</span>
-                <span class="status-badge enabled">已启用</span>
-              </div>
-              <div class="status-row">
-                <span class="status-label">多人服务器</span>
-                <span class="status-badge disabled">已禁用</span>
-              </div>
+            <div class="features-grid">
+                <div class="feature-card" data-delay="0">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">双命令系统</h3>
+                    <p class="feature-desc">同时支持 CMD 和 PowerShell 两种命令环境，一键切换，灵活应对不同场景需求。</p>
+                    <div class="feature-tag">CMD / PowerShell</div>
+                </div>
+                <div class="feature-card" data-delay="100">
+                    <div class="feature-icon cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">系统信息查询</h3>
+                    <p class="feature-desc">快速查看 CPU、内存、磁盘、网络等系统信息，游戏内即可掌握电脑运行状态。</p>
+                    <div class="feature-tag">System Info</div>
+                </div>
+                <div class="feature-card" data-delay="200">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">文件管理</h3>
+                    <p class="feature-desc">在游戏内浏览、创建、删除文件和目录，无需切出游戏即可完成基本文件操作。</p>
+                    <div class="feature-tag">File Manager</div>
+                </div>
+                <div class="feature-card" data-delay="300">
+                    <div class="feature-icon cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">实用工具箱</h3>
+                    <p class="feature-desc">内置多种实用工具：进程管理、环境变量查看、网络诊断等，一站式解决常见需求。</p>
+                    <div class="feature-tag">Toolbox</div>
+                </div>
+                <div class="feature-card" data-delay="400">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">命令别名</h3>
+                    <p class="feature-desc">为常用命令设置简短别名，减少重复输入，大幅提升操作效率。</p>
+                    <div class="feature-tag">Alias</div>
+                </div>
+                <div class="feature-card" data-delay="500">
+                    <div class="feature-icon cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">脚本执行</h3>
+                    <p class="feature-desc">支持直接执行 .bat、.ps1 等脚本文件，批量操作一气呵成。</p>
+                    <div class="feature-tag">Script Runner</div>
+                </div>
+                <div class="feature-card" data-delay="600">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">输出保存</h3>
+                    <p class="feature-desc">命令执行结果可自动保存到文件，方便后续查看和分析。</p>
+                    <div class="feature-tag">Output Save</div>
+                </div>
+                <div class="feature-card" data-delay="700">
+                    <div class="feature-icon cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">失败分析</h3>
+                    <p class="feature-desc">命令执行失败时自动分析错误原因，提供修复建议，降低排错成本。</p>
+                    <div class="feature-tag">Error Analysis</div>
+                </div>
+                <div class="feature-card" data-delay="800">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">历史记录</h3>
+                    <p class="feature-desc">完整记录所有执行过的命令，支持搜索和快速复用，告别重复输入。</p>
+                    <div class="feature-tag">History</div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Installation Section -->
-  <section class="section install" id="install">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">GET STARTED</span>
-        <h2 class="section-title">安装方法</h2>
-        <p class="section-desc">三步完成安装，即刻开始使用</p>
-      </div>
-      <div class="install-steps">
-        <div class="install-step">
-          <div class="step-number">01</div>
-          <div class="step-content">
-            <h3 class="step-title">安装 Fabric</h3>
-            <p class="step-desc">确保已安装 Minecraft 1.20.1 及 Fabric Loader。前往 <span class="inline-code">fabricmc.net</span> 下载对应版本的安装器。</p>
-          </div>
-          <div class="step-visual">
-            <div class="mini-terminal">
-              <span class="mt-prompt">&gt;</span> Fabric Loader 1.20.1 &#10004;
+    <!-- Download Section -->
+    <section class="section download" id="download">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">DOWNLOAD</span>
+                <h2 class="section-title">下载与安装</h2>
+                <p class="section-desc">选择你喜欢的下载方式，三步即可开始使用</p>
             </div>
-          </div>
-        </div>
-        <div class="install-step">
-          <div class="step-number">02</div>
-          <div class="step-content">
-            <h3 class="step-title">下载模组</h3>
-            <p class="step-desc">下载 SysCmd v1.3 模组文件（约 0.1MB），将其放入 <span class="inline-code">.minecraft/mods</span> 文件夹中。</p>
-          </div>
-          <div class="step-visual">
-            <div class="mini-terminal">
-              <span class="mt-prompt">&gt;</span> mc2cmd-1.3.jar &#8594; mods/
+
+            <!-- Main Download Button -->
+            <div class="download-main">
+                <a href="https://1843383962.share.123pan.cn/123pan/gw8lTd-kmtgv?pwd=scmd" class="download-btn" target="_blank" rel="noopener noreferrer">
+                    <span class="download-btn-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </span>
+                    <span class="download-btn-text">
+                        <span class="download-btn-label">下载 SysCmd</span>
+                        <span class="download-btn-version">v1.3 · Fabric · MC 1.20.1 · ~0.1MB</span>
+                    </span>
+                </a>
             </div>
-          </div>
-        </div>
-        <div class="install-step">
-          <div class="step-number">03</div>
-          <div class="step-content">
-            <h3 class="step-title">启动游戏</h3>
-            <p class="step-desc">启动 Minecraft，进入世界后使用 <span class="inline-code">/cmd</span> 或 <span class="inline-code">/ps</span> 命令即可开始使用。</p>
-          </div>
-          <div class="step-visual">
-            <div class="mini-terminal">
-              <span class="mt-prompt">MC&gt;</span> /cmd dir &#10004;
+
+            <!-- Download Sources -->
+            <div class="download-sources">
+                <h3 class="sources-title">其他下载渠道</h3>
+                <div class="sources-grid">
+                    <a href="https://www.curseforge.com/minecraft/mc-mods/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
+                        <span class="source-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        </span>
+                        <span class="source-name">CurseForge</span>
+                        <span class="source-arrow">↗</span>
+                    </a>
+                    <a href="https://modrinth.com/mod/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
+                        <span class="source-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8v8H8z"/></svg>
+                        </span>
+                        <span class="source-name">Modrinth</span>
+                        <span class="source-arrow">↗</span>
+                    </a>
+                    <a href="https://github.com/qqq931/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
+                        <span class="source-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                        </span>
+                        <span class="source-name">GitHub Releases</span>
+                        <span class="source-arrow">↗</span>
+                    </a>
+                    <a href="https://1843383962.share.123pan.cn/123pan/gw8lTd-kmtgv?pwd=scmd" class="source-link" target="_blank" rel="noopener noreferrer">
+                        <span class="source-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        </span>
+                        <span class="source-name">123网盘</span>
+                        <span class="source-arrow">↗</span>
+                    </a>
+                </div>
             </div>
-          </div>
+
+            <!-- Quick Install Steps -->
+            <div class="quick-install">
+                <h3 class="sources-title">快速安装</h3>
+                <div class="quick-steps">
+                    <div class="quick-step">
+                        <div class="qs-number">1</div>
+                        <div class="qs-content">
+                            <h4 class="qs-title">安装 Fabric</h4>
+                            <p class="qs-desc">安装 Minecraft 1.20.1 和 Fabric Loader</p>
+                        </div>
+                    </div>
+                    <div class="qs-arrow">➡</div>
+                    <div class="quick-step">
+                        <div class="qs-number">2</div>
+                        <div class="qs-content">
+                            <h4 class="qs-title">放入 mods</h4>
+                            <p class="qs-desc">将 jar 文件拖入 .minecraft/mods</p>
+                        </div>
+                    </div>
+                    <div class="qs-arrow">➡</div>
+                    <div class="quick-step">
+                        <div class="qs-number">3</div>
+                        <div class="qs-content">
+                            <h4 class="qs-title">开玩</h4>
+                            <p class="qs-desc">启动游戏，输入 /cmd 即可使用</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requirements -->
+            <div class="requirements">
+                <h3 class="sources-title">环境要求</h3>
+                <div class="req-list">
+                    <div class="req-item">
+                        <span class="req-label">Minecraft</span>
+                        <span class="req-value">1.20.1</span>
+                    </div>
+                    <div class="req-item">
+                        <span class="req-label">Fabric Loader</span>
+                        <span class="req-value">≥ 0.15.0</span>
+                    </div>
+                    <div class="req-item">
+                        <span class="req-label">操作系统</span>
+                        <span class="req-value">Windows</span>
+                    </div>
+                    <div class="req-item">
+                        <span class="req-label">Java</span>
+                        <span class="req-value">17+</span>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Warnings Section -->
-  <section class="section warnings" id="warnings">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag warning-tag">NOTICE</span>
-        <h2 class="section-title">注意事项</h2>
-        <p class="section-desc">使用前请务必了解以下内容</p>
-      </div>
-      <div class="warnings-grid">
-        <div class="warning-card caution">
-          <div class="warning-header">
-            <span class="warning-icon">&#9888;</span>
-            <span>注意事项</span>
-          </div>
-          <ul class="warning-list">
-            <li>本模组仅在 Windows 系统上可用，不支持 macOS / Linux</li>
-            <li>执行的命令拥有当前用户的系统权限，请谨慎操作</li>
-            <li>部分命令可能需要管理员权限才能正常执行</li>
-            <li>长时间运行的命令可能导致游戏短暂卡顿</li>
-            <li>建议在单人模式或自己的服务器中使用</li>
-          </ul>
+    <!-- Commands Section -->
+    <section class="section commands" id="commands">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">REFERENCE</span>
+                <h2 class="section-title">命令速查</h2>
+                <p class="section-desc">常用命令一览，快速上手</p>
+            </div>
+            <div class="commands-list">
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd</span>
+                        <span class="cmd-args">&lt;command&gt;</span>
+                    </div>
+                    <p class="command-desc">在 CMD 环境中执行指定命令</p>
+                    <span class="command-env cmd">CMD</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/ps</span>
+                        <span class="cmd-args">&lt;command&gt;</span>
+                    </div>
+                    <p class="command-desc">在 PowerShell 环境中执行指定命令</p>
+                    <span class="command-env ps">PowerShell</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd alias</span>
+                        <span class="cmd-args">&lt;name&gt; &lt;command&gt;</span>
+                    </div>
+                    <p class="command-desc">创建命令别名，简化常用操作</p>
+                    <span class="command-env alias">Alias</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd run</span>
+                        <span class="cmd-args">&lt;script.bat&gt;</span>
+                    </div>
+                    <p class="command-desc">执行指定的脚本文件</p>
+                    <span class="command-env script">Script</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd history</span>
+                    </div>
+                    <p class="command-desc">查看命令执行历史记录</p>
+                    <span class="command-env history">History</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd sysinfo</span>
+                    </div>
+                    <p class="command-desc">查看系统信息概览</p>
+                    <span class="command-env sysinfo">System</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd save</span>
+                        <span class="cmd-args">&lt;filename&gt;</span>
+                    </div>
+                    <p class="command-desc">将上次命令输出保存到文件</p>
+                    <span class="command-env save">Save</span>
+                </div>
+                <div class="command-item">
+                    <div class="command-syntax">
+                        <span class="cmd-prefix">/cmd analyze</span>
+                    </div>
+                    <p class="command-desc">分析上次失败命令的错误原因</p>
+                    <span class="command-env analyze">Analyze</span>
+                </div>
+            </div>
         </div>
-        <div class="warning-card danger">
-          <div class="warning-header">
-            <span class="warning-icon">&#9940;</span>
-            <span>禁止用途</span>
-          </div>
-          <ul class="warning-list">
-            <li>严禁用于破坏他人计算机系统或窃取数据</li>
-            <li>严禁在公共服务器中未经管理员授权使用</li>
-            <li>严禁用于绕过系统安全策略或权限限制</li>
-            <li>严禁用于传播恶意软件或进行网络攻击</li>
-            <li>违反以上规定造成的一切后果由使用者自行承担</li>
-          </ul>
+    </section>
+
+    <!-- Security Section -->
+    <section class="section security" id="security">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">SAFETY</span>
+                <h2 class="section-title">安全机制</h2>
+                <p class="section-desc">多重保护，让每一次命令执行都安全可控</p>
+            </div>
+            <div class="security-grid">
+                <div class="security-card">
+                    <div class="security-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="security-title">二次确认</h3>
+                    <p class="security-desc">执行系统命令前会弹出确认提示，防止误操作。你可以选择确认执行或取消操作，确保每一步都在掌控之中。</p>
+                    <div class="security-visual">
+                        <div class="confirm-dialog">
+                            <div class="confirm-header">SysCmd</div>
+                            <div class="confirm-body">确认执行命令?<br><code>del temp.txt</code></div>
+                            <div class="confirm-actions">
+                                <button class="confirm-btn cancel">取消</button>
+                                <button class="confirm-btn ok">确认</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="security-card">
+                    <div class="security-icon warning">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 6a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h3 class="security-title">危险命令拦截</h3>
+                    <p class="security-desc">内置危险命令黑名单，自动拦截格式化磁盘、删除系统文件等高危操作，从源头杜绝灾难性误操作。</p>
+                    <div class="security-visual">
+                        <div class="blocked-list">
+                            <div class="blocked-item"><span class="block-icon">✖</span> format C:</div>
+                            <div class="blocked-item"><span class="block-icon">✖</span> del /f /s /q C:\*</div>
+                            <div class="blocked-item"><span class="block-icon">✖</span> rd /s /q C:\Windows</div>
+                            <div class="blocked-item safe"><span class="block-icon">✔</span> dir / ipconfig / ...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="security-card">
+                    <div class="security-icon danger">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                    </div>
+                    <h3 class="security-title">服务端禁用</h3>
+                    <p class="security-desc">在多人服务器环境中自动禁用所有命令执行功能，防止恶意利用，保障服务器安全与其他玩家体验。</p>
+                    <div class="security-visual">
+                        <div class="server-status">
+                            <div class="status-row">
+                                <span class="status-label">单人模式</span>
+                                <span class="status-badge enabled">已启用</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">局域网</span>
+                                <span class="status-badge enabled">已启用</span>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">多人服务器</span>
+                                <span class="status-badge disabled">已禁用</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-brand">
-          <span class="logo-bracket">[</span>
-          <span class="logo-text">SysCmd</span>
-          <span class="logo-bracket">]</span>
+    <!-- Installation Section -->
+    <section class="section install" id="install">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">GET STARTED</span>
+                <h2 class="section-title">安装方法</h2>
+                <p class="section-desc">三步完成安装，即刻开始使用</p>
+            </div>
+            <div class="install-steps">
+                <div class="install-step">
+                    <div class="step-number">01</div>
+                    <div class="step-content">
+                        <h3 class="step-title">安装 Fabric</h3>
+                        <p class="step-desc">确保已安装 Minecraft 1.20.1 及 Fabric Loader。前往 <span class="inline-code">fabricmc.net</span> 下载对应版本的安装器。</p>
+                    </div>
+                    <div class="step-visual">
+                        <div class="mini-terminal">
+                            <span class="mt-prompt">&gt;</span> Fabric Loader 1.20.1 ✔
+                        </div>
+                    </div>
+                </div>
+                <div class="install-step">
+                    <div class="step-number">02</div>
+                    <div class="step-content">
+                        <h3 class="step-title">下载模组</h3>
+                        <p class="step-desc">下载 SysCmd v1.3 模组文件（约 0.1MB），将其放入 <span class="inline-code">.minecraft/mods</span> 文件夹中。</p>
+                    </div>
+                    <div class="step-visual">
+                        <div class="mini-terminal">
+                            <span class="mt-prompt">&gt;</span> mc2cmd-1.3.jar → mods/
+                        </div>
+                    </div>
+                </div>
+                <div class="install-step">
+                    <div class="step-number">03</div>
+                    <div class="step-content">
+                        <h3 class="step-title">启动游戏</h3>
+                        <p class="step-desc">启动 Minecraft，进入世界后使用 <span class="inline-code">/cmd</span> 或 <span class="inline-code">/ps</span> 命令即可开始使用。</p>
+                    </div>
+                    <div class="step-visual">
+                        <div class="mini-terminal">
+                            <span class="mt-prompt">MC&gt;</span> /cmd dir ✔
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="footer-info">
-          <p>开发者：<span class="footer-highlight">杨晨硕</span></p>
-          <p>基于 <span class="footer-highlight">MIT License</span> 开源协议</p>
-          <p>Minecraft 1.20.1 · Fabric · v1.3</p>
+    </section>
+
+    <!-- Warnings Section -->
+    <section class="section warnings" id="warnings">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag warning-tag">NOTICE</span>
+                <h2 class="section-title">注意事项</h2>
+                <p class="section-desc">使用前请务必了解以下内容</p>
+            </div>
+            <div class="warnings-grid">
+                <div class="warning-card caution">
+                    <div class="warning-header">
+                        <span class="warning-icon">⚠</span>
+                        <span>注意事项</span>
+                    </div>
+                    <ul class="warning-list">
+                        <li>本模组仅在 Windows 系统上可用，不支持 macOS / Linux</li>
+                        <li>执行的命令拥有当前用户的系统权限，请谨慎操作</li>
+                        <li>部分命令可能需要管理员权限才能正常执行</li>
+                        <li>长时间运行的命令可能导致游戏短暂卡顿</li>
+                        <li>建议在单人模式或自己的服务器中使用</li>
+                    </ul>
+                </div>
+                <div class="warning-card danger">
+                    <div class="warning-header">
+                        <span class="warning-icon">⛔</span>
+                        <span>禁止用途</span>
+                    </div>
+                    <ul class="warning-list">
+                        <li>严禁用于破坏他人计算机系统或窃取数据</li>
+                        <li>严禁在公共服务器中未经管理员授权使用</li>
+                        <li>严禁用于绕过系统安全策略或权限限制</li>
+                        <li>严禁用于传播恶意软件或进行网络攻击</li>
+                        <li>违反以上规定造成的一切后果由使用者自行承担</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="footer-divider"></div>
-        <p class="footer-copyright">SysCmd is not affiliated with Mojang Studios or Microsoft.</p>
-      </div>
-    </div>
-  </footer>
+    </section>
 
-  <script>
-/* ===== Particle Background ===== */
-(function initParticles() {
-  const canvas = document.getElementById('particles');
-  const ctx = canvas.getContext('2d');
-  let particles = [];
-  let w, h;
-  const PARTICLE_COUNT = 60;
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="logo-bracket">[</span>
+                    <span class="logo-text">SysCmd</span>
+                    <span class="logo-bracket">]</span>
+                </div>
+                <div class="footer-info">
+                    <p>开发者：<span class="footer-highlight">杨晨硕</span></p>
+                    <p>基于 <span class="footer-highlight">MIT License</span> 开源协议</p>
+                    <p>Minecraft 1.20.1 · Fabric · v1.3</p>
+                </div>
+                <div class="footer-divider"></div>
+                <p class="footer-copyright">SysCmd is not affiliated with Mojang Studios or Microsoft.</p>
+            </div>
+        </div>
+    </footer>
 
-  function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-  }
+    <script>
+        /* ===== Particle Background ===== */
+        (function initParticles() {
+            const canvas = document.getElementById('particles');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let w, h;
+            const PARTICLE_COUNT = 60;
 
-  function createParticle() {
-    return {
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      size: Math.random() * 2 + 0.5,
-      alpha: Math.random() * 0.5 + 0.1,
-      color: Math.random() > 0.7 ? '0, 212, 255' : '0, 255, 136'
-    };
-  }
+            function resize() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            }
 
-  function init() {
-    resize();
-    particles = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles.push(createParticle());
-    }
-  }
+            function createParticle() {
+                return {
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    size: Math.random() * 2 + 0.5,
+                    alpha: Math.random() * 0.5 + 0.1,
+                    color: Math.random() > 0.7 ? '0, 212, 255' : '0, 255, 136'
+                };
+            }
 
-  function draw() {
-    ctx.clearRect(0, 0, w, h);
-    particles.forEach(function(p) {
-      p.x += p.vx;
-      p.y += p.vy;
+            function init() {
+                resize();
+                particles = [];
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    particles.push(createParticle());
+                }
+            }
 
-      if (p.x < 0) p.x = w;
-      if (p.x > w) p.x = 0;
-      if (p.y < 0) p.y = h;
-      if (p.y > h) p.y = 0;
+            function draw() {
+                ctx.clearRect(0, 0, w, h);
+                particles.forEach(function(p) {
+                    p.x += p.vx;
+                    p.y += p.vy;
 
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(' + p.color + ',' + p.alpha + ')';
-      ctx.fill();
-    });
+                    if (p.x < 0) p.x = w;
+                    if (p.x > w) p.x = 0;
+                    if (p.y < 0) p.y = h;
+                    if (p.y > h) p.y = 0;
 
-    // Draw connections
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x;
-        const dy = particles[i].y - particles[j].y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = 'rgba(0, 255, 136,' + (0.06 * (1 - dist / 150)) + ')';
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-      }
-    }
-    requestAnimationFrame(draw);
-  }
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(' + p.color + ',' + p.alpha + ')';
+                    ctx.fill();
+                });
 
-  window.addEventListener('resize', resize);
-  init();
-  draw();
-})();
+                // Draw connections
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 150) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = 'rgba(0, 255, 136,' + (0.06 * (1 - dist / 150)) + ')';
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+                requestAnimationFrame(draw);
+            }
 
-/* ===== Typewriter Effect ===== */
-(function initTypewriter() {
-  const el = document.getElementById('typewriter');
-  if (!el) return;
-  const commands = [
-    'ipconfig /all',
-    'systeminfo',
-    'tasklist',
-    'Get-Process | Sort-Object CPU -Descending',
-    'dir C:\\Users',
-    'ping google.com',
-    'netstat -an'
-  ];
-  let cmdIndex = 0;
-  let charIndex = 0;
-  let isDeleting = false;
-  let speed = 80;
+            window.addEventListener('resize', resize);
+            init();
+            draw();
+        })();
 
-  function type() {
-    const current = commands[cmdIndex];
-    if (isDeleting) {
-      el.textContent = current.substring(0, charIndex - 1);
-      charIndex--;
-      speed = 40;
-    } else {
-      el.textContent = current.substring(0, charIndex + 1);
-      charIndex++;
-      speed = 80 + Math.random() * 40;
-    }
+        /* ===== Typewriter Effect ===== */
+        (function initTypewriter() {
+            const el = document.getElementById('typewriter');
+            if (!el) return;
+            const commands = [
+                'ipconfig /all',
+                'systeminfo',
+                'tasklist',
+                'Get-Process | Sort-Object CPU -Descending',
+                'dir C:\\Users',
+                'ping google.com',
+                'netstat -an'
+            ];
+            let cmdIndex = 0;
+            let charIndex = 0;
+            let isDeleting = false;
+            let speed = 80;
 
-    if (!isDeleting && charIndex === current.length) {
-      speed = 2000;
-      isDeleting = true;
-    } else if (isDeleting && charIndex === 0) {
-      isDeleting = false;
-      cmdIndex = (cmdIndex + 1) % commands.length;
-      speed = 400;
-    }
+            function type() {
+                const current = commands[cmdIndex];
+                if (isDeleting) {
+                    el.textContent = current.substring(0, charIndex - 1);
+                    charIndex--;
+                    speed = 40;
+                } else {
+                    el.textContent = current.substring(0, charIndex + 1);
+                    charIndex++;
+                    speed = 80 + Math.random() * 40;
+                }
 
-    setTimeout(type, speed);
-  }
-  type();
-})();
+                if (!isDeleting && charIndex === current.length) {
+                    speed = 2000;
+                    isDeleting = true;
+                } else if (isDeleting && charIndex === 0) {
+                    isDeleting = false;
+                    cmdIndex = (cmdIndex + 1) % commands.length;
+                    speed = 400;
+                }
 
-/* ===== Scroll Animations ===== */
-(function initScrollAnimations() {
-  // Hero animations
-  const heroElements = document.querySelectorAll('.hero .animate-in');
-  heroElements.forEach(function(el, i) {
-    setTimeout(function() {
-      el.classList.add('visible');
-    }, 200 + i * 150);
-  });
+                setTimeout(type, speed);
+            }
+            type();
+        })();
 
-  // Scroll-triggered animations
-  const observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        const delay = parseInt(entry.target.getAttribute('data-delay') || '0', 10);
-        setTimeout(function() {
-          entry.target.classList.add('visible');
-        }, delay);
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        /* ===== Scroll Animations ===== */
+        (function initScrollAnimations() {
+            // Hero animations
+            const heroElements = document.querySelectorAll('.hero .animate-in');
+            heroElements.forEach(function(el, i) {
+                setTimeout(function() {
+                    el.classList.add('visible');
+                }, 200 + i * 150);
+            });
 
-  // Observe feature cards
-  document.querySelectorAll('.feature-card').forEach(function(card) {
-    card.classList.add('fade-up');
-    observer.observe(card);
-  });
+            // Scroll-triggered animations
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        const delay = parseInt(entry.target.getAttribute('data-delay') || '0', 10);
+                        setTimeout(function() {
+                            entry.target.classList.add('visible');
+                        }, delay);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-  // Observe command items
-  document.querySelectorAll('.command-item').forEach(function(item, i) {
-    item.classList.add('fade-up');
-    item.setAttribute('data-delay', String(i * 80));
-    observer.observe(item);
-  });
+            // Observe feature cards
+            document.querySelectorAll('.feature-card').forEach(function(card) {
+                card.classList.add('fade-up');
+                observer.observe(card);
+            });
 
-  // Observe security cards
-  document.querySelectorAll('.security-card').forEach(function(card, i) {
-    card.classList.add('fade-up');
-    card.setAttribute('data-delay', String(i * 150));
-    observer.observe(card);
-  });
+            // Observe command items
+            document.querySelectorAll('.command-item').forEach(function(item, i) {
+                item.classList.add('fade-up');
+                item.setAttribute('data-delay', String(i * 80));
+                observer.observe(item);
+            });
 
-  // Observe install steps
-  document.querySelectorAll('.install-step').forEach(function(step, i) {
-    step.classList.add('fade-up');
-    step.setAttribute('data-delay', String(i * 150));
-    observer.observe(step);
-  });
+            // Observe security cards
+            document.querySelectorAll('.security-card').forEach(function(card, i) {
+                card.classList.add('fade-up');
+                card.setAttribute('data-delay', String(i * 150));
+                observer.observe(card);
+            });
 
-  // Observe warning cards
-  document.querySelectorAll('.warning-card').forEach(function(card, i) {
-    card.classList.add('fade-up');
-    card.setAttribute('data-delay', String(i * 150));
-    observer.observe(card);
-  });
+            // Observe install steps
+            document.querySelectorAll('.install-step').forEach(function(step, i) {
+                step.classList.add('fade-up');
+                step.setAttribute('data-delay', String(i * 150));
+                observer.observe(step);
+            });
 
-  // Observe section headers
-  document.querySelectorAll('.section-header').forEach(function(header) {
-    header.classList.add('fade-up');
-    observer.observe(header);
-  });
-})();
+            // Observe warning cards
+            document.querySelectorAll('.warning-card').forEach(function(card, i) {
+                card.classList.add('fade-up');
+                card.setAttribute('data-delay', String(i * 150));
+                observer.observe(card);
+            });
 
-/* ===== Navbar Scroll Effect ===== */
-(function initNavbar() {
-  const navbar = document.getElementById('navbar');
-  let lastScroll = 0;
+            // Observe section headers
+            document.querySelectorAll('.section-header').forEach(function(header) {
+                header.classList.add('fade-up');
+                observer.observe(header);
+            });
+        })();
 
-  window.addEventListener('scroll', function() {
-    const currentScroll = window.pageYOffset;
-    if (currentScroll > 50) {
-      navbar.classList.add('scrolled');
-    } else {
-      navbar.classList.remove('scrolled');
-    }
-    lastScroll = currentScroll;
-  });
-})();
+        /* ===== Navbar Scroll Effect ===== */
+        (function initNavbar() {
+            const navbar = document.getElementById('navbar');
+            let lastScroll = 0;
 
-/* ===== Mobile Nav Toggle ===== */
-(function initMobileNav() {
-  const toggle = document.getElementById('navToggle');
-  const links = document.getElementById('navLinks');
-  if (!toggle || !links) return;
+            window.addEventListener('scroll', function() {
+                const currentScroll = window.pageYOffset;
+                if (currentScroll > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+                lastScroll = currentScroll;
+            });
+        })();
 
-  toggle.addEventListener('click', function() {
-    links.classList.toggle('active');
-  });
+        /* ===== Mobile Nav Toggle ===== */
+        (function initMobileNav() {
+            const toggle = document.getElementById('navToggle');
+            const links = document.getElementById('navLinks');
+            if (!toggle || !links) return;
 
-  // Close on link click
-  links.querySelectorAll('.nav-link').forEach(function(link) {
-    link.addEventListener('click', function() {
-      links.classList.remove('active');
-    });
-  });
-})();
+            toggle.addEventListener('click', function() {
+                links.classList.toggle('active');
+            });
 
-/* ===== Smooth Scroll for Anchor Links ===== */
-document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
-  anchor.addEventListener('click', function(e) {
-    e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
-});
+            // Close on link click
+            links.querySelectorAll('.nav-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    links.classList.remove('active');
+                });
+            });
+        })();
 
-  </script>
+        /* ===== Smooth Scroll for Anchor Links ===== */
+        document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
