@@ -4,28 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SysCmd - 在 Minecraft 游戏内直接执行 Windows CMD 和 PowerShell 命令的超轻量 Fabric 模组">
-    <title>SysCmd - Minecraft 命令执行模组</title>
+    <title>SysCmd - Minecraft 系统命令执行模组</title>
     <link rel="preconnect" href="https://fonts.googleapis.cn">
     <link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
     <link href="https://fonts.googleapis.cn/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* ===== Reset & Base ===== */
-        *,
-        *::before,
-        *::after {
+        /* ===== RESET & BASE ===== */
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         :root {
             --bg-primary: #0a0e14;
             --bg-secondary: #111820;
             --bg-card: #151d28;
+            --bg-tertiary: #1a2332;
             --green: #00ff88;
             --cyan: #00d4ff;
             --orange: #ff6b35;
             --red: #ff4444;
+            --purple: #a78bfa;
+            --yellow: #fbbf24;
             --text-primary: #e0e6ed;
             --text-secondary: #7a8a9e;
             --font-title: 'Orbitron', sans-serif;
@@ -33,12 +33,12 @@
             --font-mono: 'JetBrains Mono', monospace;
             --radius: 4px;
             --radius-lg: 8px;
+            --silk: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-
         html {
             scroll-behavior: smooth;
         }
-
         body {
             font-family: var(--font-body);
             background: var(--bg-primary);
@@ -46,8 +46,10 @@
             line-height: 1.6;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-
         a {
             color: inherit;
             text-decoration: none;
@@ -59,14 +61,87 @@
             max-width: 100%;
             display: block;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
+        ::selection {
+            background: rgba(0, 255, 136, 0.3);
         }
 
-        /* ===== Particle Canvas ===== */
+        /* ===== CUSTOM CURSOR ===== */
+        * {
+            cursor: none !important;
+        }
+        .cursor-dot,
+        .cursor-ring {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.8);
+            transition: transform .15s var(--silk), width .2s, height .2s;
+        }
+        .cursor-ring {
+            width: 36px;
+            height: 36px;
+            border: 1.5px solid rgba(0, 255, 136, 0.5);
+            transition: transform .25s var(--silk), width .3s var(--silk), height .3s var(--silk), border-color .3s, background .3s;
+            backdrop-filter: invert(5%);
+        }
+        .cursor-ring.hover {
+            width: 56px;
+            height: 56px;
+            border-color: var(--cyan);
+            background: rgba(0, 212, 255, 0.08);
+        }
+        .cursor-dot.click {
+            transform: translate(-50%, -50%) scale(.7);
+        }
+        .cursor-ring.click {
+            width: 24px;
+            height: 24px;
+        }
+        @media (max-width:768px) {
+            .cursor-dot,
+            .cursor-ring {
+                display: none;
+            }
+            * {
+                cursor: auto !important;
+            }
+        }
+
+        /* ===== SCROLL PROGRESS ===== */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            width: 0%;
+            background: linear-gradient(90deg, var(--green), var(--cyan));
+            z-index: 200;
+            transition: width .1s linear;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+
+        /* ===== MOUSE GLOW ===== */
+        .mouse-glow {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.08) 0%, rgba(0, 212, 255, 0.04) 40%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            transform: translate(-50%, -50%);
+        }
+
+        /* ===== PARTICLES ===== */
         #particles {
             position: fixed;
             top: 0;
@@ -77,7 +152,7 @@
             pointer-events: none;
         }
 
-        /* ===== Navigation ===== */
+        /* ===== NAVBAR ===== */
         .navbar {
             position: fixed;
             top: 0;
@@ -87,14 +162,14 @@
             background: rgba(10, 14, 20, 0.85);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(0, 255, 136, 0.08);
-            transition: background 0.3s, box-shadow 0.3s;
+            transition: all .3s var(--silk);
         }
         .navbar.scrolled {
             background: rgba(10, 14, 20, 0.95);
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
         }
         .nav-container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             padding: 0 24px;
             display: flex;
@@ -107,41 +182,52 @@
             font-size: 1.1rem;
             font-weight: 700;
             letter-spacing: 2px;
+            cursor: pointer;
+            user-select: none;
         }
         .logo-bracket {
             color: var(--green);
         }
-        .logo-text {
-            color: var(--text-primary);
-        }
         .nav-links {
             display: flex;
-            gap: 32px;
+            gap: 4px;
         }
         .nav-link {
-            font-size: 0.875rem;
+            font-size: .85rem;
             font-weight: 500;
             color: var(--text-secondary);
-            transition: color 0.3s;
+            transition: all .3s var(--silk);
             position: relative;
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            user-select: none;
         }
         .nav-link::after {
             content: '';
             position: absolute;
-            bottom: -4px;
-            left: 0;
+            bottom: 2px;
+            left: 50%;
             width: 0;
             height: 2px;
             background: var(--green);
-            transition: width 0.3s;
+            transition: all .3s var(--silk);
+            transform: translateX(-50%);
         }
         .nav-link:hover {
             color: var(--green);
+            background: rgba(0, 255, 136, 0.05);
         }
         .nav-link:hover::after {
-            width: 100%;
+            width: 60%;
         }
-
+        .nav-link.active {
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.08);
+        }
+        .nav-link.active::after {
+            width: 60%;
+        }
         .nav-toggle {
             display: none;
             flex-direction: column;
@@ -155,32 +241,114 @@
             width: 24px;
             height: 2px;
             background: var(--text-primary);
-            transition: all 0.3s;
+            transition: all .3s;
         }
 
-        /* ===== Hero Section ===== */
-        .hero {
+        /* ===== PAGE LAYOUT — FIXED SCROLL ISSUE ===== */
+        .main-content {
             position: relative;
-            min-height: 100vh;
+            z-index: 1;
+            padding-top: 64px;
+            flex: 1 0 auto;
+            display: grid;
+            grid-template-rows: 1fr;
+            grid-template-columns: 1fr;
+            min-height: calc(100vh - 64px);
+        }
+        .page {
+            grid-area: 1 / 1;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(20px);
+            transition: opacity 0.45s var(--silk), transform 0.45s var(--silk), visibility 0.45s;
+            will-change: opacity, transform;
+            overflow: visible;
+            padding-bottom: 40px;
+        }
+        .page.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0);
+            transition: opacity 0.45s var(--silk), transform 0.45s var(--silk), visibility 0.45s;
+        }
+
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            padding: 70px 0 50px;
+            text-align: center;
+        }
+        .page-tag {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--green);
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+        }
+        .page-title {
+            font-family: var(--font-title);
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 900;
+            margin-bottom: 16px;
+        }
+        .page-desc {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, var(--green), var(--cyan), var(--green));
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* ===== HOME ===== */
+        .hero {
+            min-height: calc(100vh - 64px);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 120px 24px 80px;
-            z-index: 1;
+            padding: 40px 24px;
         }
         .hero-content {
             text-align: center;
-            max-width: 800px;
+            max-width: 820px;
         }
         .hero-badge {
             display: inline-block;
             font-family: var(--font-mono);
-            font-size: 0.8rem;
+            font-size: .8rem;
             color: var(--green);
             border: 1px solid rgba(0, 255, 136, 0.3);
             padding: 6px 16px;
             border-radius: var(--radius);
-            margin-bottom: 32px;
+            margin-bottom: 28px;
             background: rgba(0, 255, 136, 0.05);
         }
         .hero-title {
@@ -188,63 +356,61 @@
             font-size: clamp(2rem, 5vw, 3.5rem);
             font-weight: 900;
             line-height: 1.2;
-            margin-bottom: 24px;
-            letter-spacing: -0.5px;
+            margin-bottom: 20px;
         }
         .title-line {
             display: block;
         }
-        .title-line.highlight {
-            background: linear-gradient(135deg, var(--green), var(--cyan));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
         .hero-desc {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             color: var(--text-secondary);
             line-height: 1.8;
-            margin-bottom: 32px;
+            margin-bottom: 28px;
         }
-        .hero-meta {
+        .hero-stats {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 24px;
-            margin-bottom: 40px;
+            gap: 32px;
+            margin-bottom: 32px;
         }
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+        .stat-item {
+            text-align: center;
         }
-        .meta-icon {
+        .stat-value {
+            font-family: var(--font-title);
+            font-size: 2rem;
+            font-weight: 700;
             color: var(--green);
-            font-size: 0.6rem;
         }
-
+        .stat-label {
+            font-size: .8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-family: var(--font-mono);
+        }
         .hero-actions {
             display: flex;
             justify-content: center;
             gap: 16px;
             margin-bottom: 48px;
+            flex-wrap: wrap;
         }
         .btn {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 14px 32px;
-            font-size: 0.95rem;
+            font-size: .95rem;
             font-weight: 600;
             border-radius: var(--radius);
-            transition: all 0.3s;
+            transition: all .3s var(--silk);
             cursor: pointer;
             border: none;
             position: relative;
             overflow: hidden;
+            font-family: var(--font-body);
+            user-select: none;
         }
         .btn-primary {
             background: var(--green);
@@ -261,8 +427,8 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent);
+            transition: left .5s var(--silk);
         }
         .btn-primary:hover::before {
             left: 100%;
@@ -276,12 +442,20 @@
             border-color: var(--cyan);
             color: var(--cyan);
             box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
         }
-        .btn-icon {
-            font-size: 0.8rem;
+        .glow-pulse {
+            animation: glowPulse 3s ease-in-out infinite;
         }
-
-        /* Hero Terminal */
+        @keyframes glowPulse {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 212, 255, 0.2);
+            }
+        }
         .hero-terminal {
             max-width: 560px;
             margin: 0 auto;
@@ -290,14 +464,24 @@
             border: 1px solid rgba(0, 255, 136, 0.15);
             background: var(--bg-secondary);
             text-align: left;
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
         }
         .terminal-header {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, .3);
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
         }
         .terminal-dot {
             width: 12px;
@@ -316,29 +500,29 @@
         .terminal-title {
             margin-left: auto;
             font-family: var(--font-mono);
-            font-size: 0.75rem;
+            font-size: .75rem;
             color: var(--text-secondary);
         }
         .terminal-body {
             padding: 20px;
             font-family: var(--font-mono);
-            font-size: 0.9rem;
+            font-size: .85rem;
+            line-height: 1.8;
         }
-        .terminal-line {
-            display: flex;
-            align-items: center;
-        }
-        .prompt {
+        .t-prompt {
             color: var(--green);
-            margin-right: 8px;
             font-weight: 700;
         }
-        .command {
+        .t-cmd {
             color: var(--text-primary);
         }
-        .cursor {
+        .t-out {
+            color: var(--text-secondary);
+        }
+        .t-cursor {
             color: var(--green);
             animation: blink 1s step-end infinite;
+            display: inline-block;
         }
         @keyframes blink {
             50% {
@@ -346,81 +530,86 @@
             }
         }
 
-        .scroll-indicator {
-            position: absolute;
-            bottom: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            animation: bounce 2s infinite;
+        /* Quick Links */
+        .quick-links {
+            padding: 20px 0 80px;
         }
-        .scroll-arrow {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-        }
-        @keyframes bounce {
-            0%,
-            20%,
-            50%,
-            80%,
-            100% {
-                transform: translateX(-50%) translateY(0);
-            }
-            40% {
-                transform: translateX(-50%) translateY(-10px);
-            }
-            60% {
-                transform: translateX(-50%) translateY(-5px);
-            }
-        }
-
-        /* ===== Section Common ===== */
-        .section {
-            position: relative;
-            padding: 100px 0;
-            z-index: 1;
-        }
-        .section-header {
+        .quick-links-title {
             text-align: center;
-            margin-bottom: 64px;
-        }
-        .section-tag {
-            display: inline-block;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--green);
-            letter-spacing: 3px;
-            margin-bottom: 16px;
-            text-transform: uppercase;
-        }
-        .section-tag.warning-tag {
-            color: var(--orange);
-        }
-        .section-title {
             font-family: var(--font-title);
-            font-size: clamp(1.5rem, 3vw, 2.2rem);
-            font-weight: 700;
-            margin-bottom: 16px;
+            font-size: 1.3rem;
+            margin-bottom: 36px;
         }
-        .section-desc {
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+        }
+        .quick-link-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: var(--radius-lg);
+            padding: 26px 20px;
+            transition: all .4s var(--silk);
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .quick-link-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--green), var(--cyan));
+            opacity: 0;
+            transition: opacity .4s;
+        }
+        .quick-link-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 136, .05);
+        }
+        .quick-link-card:hover::before {
+            opacity: 1;
+        }
+        .quick-link-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 14px;
+            color: var(--green);
+        }
+        .quick-link-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        .quick-link-title {
+            font-size: .95rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .quick-link-desc {
+            font-size: .78rem;
             color: var(--text-secondary);
-            font-size: 1rem;
-            max-width: 500px;
-            margin: 0 auto;
         }
 
-        /* ===== Features Grid ===== */
+        /* Feature Preview */
+        .features-preview {
+            padding: 0 0 80px;
+        }
         .features-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            gap: 20px;
         }
         .feature-card {
             background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius-lg);
-            padding: 32px 28px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 28px 24px;
+            transition: all .4s var(--silk);
             position: relative;
             overflow: hidden;
         }
@@ -433,21 +622,20 @@
             height: 2px;
             background: linear-gradient(90deg, var(--green), var(--cyan));
             opacity: 0;
-            transition: opacity 0.4s;
+            transition: opacity .4s;
         }
         .feature-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-5px);
             border-color: rgba(0, 255, 136, 0.2);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(0, 255, 136, 0.05);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
         }
         .feature-card:hover::before {
             opacity: 1;
         }
-
         .feature-icon {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 20px;
+            width: 44px;
+            height: 44px;
+            margin-bottom: 16px;
             color: var(--green);
         }
         .feature-icon.cyan {
@@ -457,77 +645,300 @@
             width: 100%;
             height: 100%;
         }
-
         .feature-title {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .feature-desc {
-            font-size: 0.9rem;
+            font-size: .85rem;
             color: var(--text-secondary);
             line-height: 1.7;
-            margin-bottom: 16px;
         }
-        .feature-tag {
+
+        /* ===== FEATURES PAGE ===== */
+        .feature-detail-section {
+            padding: 0 0 80px;
+        }
+        .feature-detail {
+            display: flex;
+            gap: 50px;
+            align-items: center;
+            margin-bottom: 70px;
+        }
+        .feature-detail:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+        .feature-detail-content {
+            flex: 1;
+        }
+        .feature-detail-badge {
+            display: inline-block;
             font-family: var(--font-mono);
-            font-size: 0.7rem;
+            font-size: .7rem;
             color: var(--green);
             background: rgba(0, 255, 136, 0.08);
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: var(--radius);
-            display: inline-block;
+            margin-bottom: 14px;
         }
-        .feature-card:nth-child(even) .feature-tag {
+        .feature-detail-title {
+            font-family: var(--font-title);
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .feature-detail-text {
+            color: var(--text-secondary);
+            line-height: 1.9;
+            margin-bottom: 16px;
+            font-size: .92rem;
+        }
+        .feature-detail-list {
+            margin-bottom: 16px;
+        }
+        .feature-detail-list li {
+            padding: 6px 0;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: .9rem;
+        }
+        .feature-detail-list li::before {
+            content: '▸';
+            color: var(--green);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .feature-detail-visual {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        .feature-visual-box {
+            width: 100%;
+            max-width: 360px;
+            aspect-ratio: 1;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(0, 255, 136, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-visual-icon {
+            width: 100px;
+            height: 100px;
+            color: var(--green);
+            filter: drop-shadow(0 0 20px rgba(0, 255, 136, .4));
+        }
+        .feature-visual-icon.cyan {
             color: var(--cyan);
-            background: rgba(0, 212, 255, 0.08);
+            filter: drop-shadow(0 0 20px rgba(0, 212, 255, .4));
+        }
+        .feature-visual-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        .feature-visual-ring {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            border: 2px solid rgba(0, 255, 136, .2);
+            border-radius: 50%;
+            animation: ringPulse 3s ease-in-out infinite;
+        }
+        .feature-visual-ring:nth-child(2) {
+            width: 220px;
+            height: 220px;
+            animation-delay: .5s;
+        }
+        @keyframes ringPulse {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: .3;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: .1;
+            }
         }
 
-        /* ===== Download Section ===== */
-        .download {
-            background: var(--bg-secondary);
+        /* ===== COMMANDS PAGE ===== */
+        .command-search {
+            max-width: 500px;
+            margin: 0 auto 40px;
+            position: relative;
+        }
+        .command-search input {
+            width: 100%;
+            padding: 14px 20px 14px 48px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: .9rem;
+            transition: all .3s var(--silk);
+            outline: none;
+        }
+        .command-search input:focus {
+            border-color: var(--green);
+            box-shadow: 0 0 20px rgba(0, 255, 136, .1);
+        }
+        .command-search::before {
+            content: '⌕';
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        .command-category {
+            margin-bottom: 40px;
+        }
+        .command-category-title {
+            font-family: var(--font-title);
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .command-category-title::before {
+            content: '';
+            width: 4px;
+            height: 22px;
+            background: var(--green);
+            border-radius: 2px;
+        }
+        .command-category-title .cat-icon {
+            color: var(--green);
+            width: 20px;
+            height: 20px;
+        }
+        .commands-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .command-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, .05);
+            border-radius: var(--radius);
+            transition: all .3s var(--silk);
+        }
+        .command-item:hover {
+            border-color: rgba(0, 255, 136, 0.2);
+            transform: translateX(4px);
+            box-shadow: -4px 0 20px rgba(0, 255, 136, .05);
+        }
+        .command-syntax {
+            font-family: var(--font-mono);
+            font-size: .85rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 260px;
+        }
+        .cmd-prefix {
+            color: var(--green);
+            font-weight: 700;
+        }
+        .cmd-args {
+            color: var(--cyan);
+            margin-left: 4px;
+        }
+        .cmd-sub {
+            color: var(--purple);
+            margin-left: 4px;
+        }
+        .command-desc {
+            font-size: .82rem;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        .command-env {
+            font-family: var(--font-mono);
+            font-size: .65rem;
+            padding: 3px 8px;
+            border-radius: var(--radius);
+            flex-shrink: 0;
+        }
+        .command-env.cmd {
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+        .command-env.ps {
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .command-env.sys {
+            color: var(--yellow);
+            background: rgba(251, 191, 36, 0.1);
+        }
+        .command-env.file {
+            color: var(--purple);
+            background: rgba(167, 139, 250, 0.1);
+        }
+        .command-env.tool {
+            color: var(--orange);
+            background: rgba(255, 107, 53, 0.1);
+        }
+        .command-env.danger {
+            color: var(--red);
+            background: rgba(255, 68, 68, 0.1);
+        }
+        .command-env.alias {
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.1);
+        }
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
         }
 
+        /* ===== DOWNLOAD PAGE ===== */
+        .download-section {
+            padding: 0 0 80px;
+        }
         .download-main {
             display: flex;
             justify-content: center;
-            margin-bottom: 48px;
+            margin-bottom: 50px;
         }
         .download-btn {
             display: flex;
             align-items: center;
-            gap: 16px;
-            padding: 18px 40px;
+            gap: 20px;
+            padding: 22px 44px;
             border: 2px solid var(--green);
             border-radius: var(--radius-lg);
             background: rgba(0, 255, 136, 0.05);
             color: var(--green);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all .4s var(--silk);
+            cursor: pointer;
             position: relative;
             overflow: hidden;
-            cursor: pointer;
-        }
-        .download-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
-            transition: left 0.6s;
         }
         .download-btn:hover {
             background: rgba(0, 255, 136, 0.12);
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3), 0 0 60px rgba(0, 255, 136, 0.1), inset 0 0 20px rgba(0, 255, 136, 0.05);
-            transform: translateY(-2px);
-        }
-        .download-btn:hover::before {
-            left: 100%;
+            box-shadow: 0 0 30px rgba(0, 255, 136, .3);
+            transform: translateY(-3px);
         }
         .download-btn-icon {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             flex-shrink: 0;
         }
         .download-btn-icon svg {
@@ -543,25 +954,22 @@
             font-family: var(--font-title);
             font-size: 1.1rem;
             font-weight: 700;
-            letter-spacing: 1px;
         }
         .download-btn-version {
             font-family: var(--font-mono);
-            font-size: 0.72rem;
+            font-size: .78rem;
             color: var(--text-secondary);
             margin-top: 2px;
         }
-
-        /* Download Sources */
         .download-sources {
-            margin-bottom: 48px;
+            margin-bottom: 50px;
         }
         .sources-title {
             text-align: center;
-            font-size: 0.95rem;
+            font-size: .9rem;
             font-weight: 600;
             color: var(--text-secondary);
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             letter-spacing: 1px;
             text-transform: uppercase;
             font-family: var(--font-mono);
@@ -577,21 +985,21 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 14px 18px;
+            padding: 14px 16px;
             background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius);
-            transition: all 0.3s;
+            transition: all .3s var(--silk);
             cursor: pointer;
         }
         .source-link:hover {
             border-color: rgba(0, 255, 136, 0.25);
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .3);
         }
         .source-icon {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             color: var(--green);
             flex-shrink: 0;
         }
@@ -600,82 +1008,78 @@
             height: 100%;
         }
         .source-name {
-            font-size: 0.82rem;
+            font-size: .8rem;
             font-weight: 500;
-            color: var(--text-primary);
             flex: 1;
         }
         .source-arrow {
-            font-size: 0.75rem;
+            font-size: .7rem;
             color: var(--text-secondary);
-            transition: color 0.3s, transform 0.3s;
+            transition: all .3s var(--silk);
         }
         .source-link:hover .source-arrow {
             color: var(--green);
             transform: translate(2px, -2px);
         }
-
-        /* Quick Install Steps */
-        .quick-install {
-            margin-bottom: 48px;
-        }
-        .quick-steps {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
+        .install-guide {
             max-width: 750px;
-            margin: 0 auto;
+            margin: 0 auto 50px;
         }
-        .quick-step {
+        .install-steps {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 18px 22px;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .install-step {
+            display: flex;
+            gap: 20px;
+            padding: 24px;
             background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius-lg);
-            flex: 1;
-            transition: all 0.3s;
+            transition: all .3s var(--silk);
         }
-        .quick-step:hover {
+        .install-step:hover {
             border-color: rgba(0, 255, 136, 0.15);
+            transform: translateX(4px);
         }
-        .qs-number {
-            width: 32px;
-            height: 32px;
+        .step-number {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             background: rgba(0, 255, 136, 0.1);
             color: var(--green);
             font-family: var(--font-title);
-            font-size: 0.9rem;
+            font-size: 1.1rem;
             font-weight: 700;
             border-radius: 50%;
-            flex-shrink: 0;
         }
-        .qs-content {
+        .step-content {
             flex: 1;
         }
-        .qs-title {
-            font-size: 0.9rem;
+        .step-title {
+            font-size: 1rem;
             font-weight: 700;
-            margin-bottom: 2px;
+            margin-bottom: 6px;
         }
-        .qs-desc {
-            font-size: 0.78rem;
+        .step-desc {
+            font-size: .85rem;
             color: var(--text-secondary);
-            line-height: 1.4;
+            line-height: 1.7;
+            margin-bottom: 10px;
         }
-        .qs-arrow {
+        .step-code {
+            font-family: var(--font-mono);
+            font-size: .78rem;
+            background: rgba(0, 0, 0, .3);
+            padding: 10px 14px;
+            border-radius: var(--radius);
             color: var(--green);
-            font-size: 1.2rem;
-            opacity: 0.5;
-            flex-shrink: 0;
+            border-left: 3px solid var(--green);
         }
-
-        /* Requirements */
         .requirements {
             max-width: 500px;
             margin: 0 auto;
@@ -691,126 +1095,47 @@
             align-items: center;
             padding: 12px 16px;
             background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius);
+            transition: all .3s var(--silk);
+        }
+        .req-item:hover {
+            border-color: rgba(0, 255, 136, 0.15);
         }
         .req-label {
-            font-size: 0.8rem;
+            font-size: .82rem;
             color: var(--text-secondary);
         }
         .req-value {
             font-family: var(--font-mono);
-            font-size: 0.82rem;
+            font-size: .82rem;
             color: var(--green);
             font-weight: 600;
         }
 
-        /* ===== Commands Section ===== */
-        .commands {
-            background: var(--bg-secondary);
-        }
-        .commands-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .command-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 18px 24px;
-            background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: var(--radius);
-            transition: all 0.3s;
-        }
-        .command-item:hover {
-            border-color: rgba(0, 255, 136, 0.2);
-            transform: translateX(4px);
-        }
-        .command-syntax {
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .cmd-prefix {
-            color: var(--green);
-            font-weight: 700;
-        }
-        .cmd-args {
-            color: var(--cyan);
-            margin-left: 6px;
-        }
-        .command-desc {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            flex: 1;
-        }
-        .command-env {
-            font-family: var(--font-mono);
-            font-size: 0.7rem;
-            padding: 3px 8px;
-            border-radius: var(--radius);
-            flex-shrink: 0;
-        }
-        .command-env.cmd {
-            color: var(--green);
-            background: rgba(0, 255, 136, 0.1);
-        }
-        .command-env.ps {
-            color: var(--cyan);
-            background: rgba(0, 212, 255, 0.1);
-        }
-        .command-env.alias {
-            color: #a78bfa;
-            background: rgba(167, 139, 250, 0.1);
-        }
-        .command-env.script {
-            color: var(--orange);
-            background: rgba(255, 107, 53, 0.1);
-        }
-        .command-env.history {
-            color: #fbbf24;
-            background: rgba(251, 191, 36, 0.1);
-        }
-        .command-env.sysinfo {
-            color: var(--cyan);
-            background: rgba(0, 212, 255, 0.1);
-        }
-        .command-env.save {
-            color: #34d399;
-            background: rgba(52, 211, 153, 0.1);
-        }
-        .command-env.analyze {
-            color: var(--red);
-            background: rgba(255, 68, 68, 0.1);
-        }
-
-        /* ===== Security Section ===== */
-        .security-grid {
+        /* ===== SECURITY PAGE ===== */
+        .security-overview {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            gap: 20px;
+            margin-bottom: 60px;
         }
         .security-card {
             background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius-lg);
-            padding: 32px 28px;
+            padding: 28px 24px;
             text-align: center;
-            transition: all 0.4s;
+            transition: all .4s var(--silk);
         }
         .security-card:hover {
             transform: translateY(-4px);
             border-color: rgba(0, 255, 136, 0.15);
         }
         .security-icon {
-            width: 56px;
-            height: 56px;
-            margin: 0 auto 20px;
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 16px;
             color: var(--green);
         }
         .security-icon.warning {
@@ -824,228 +1149,105 @@
             height: 100%;
         }
         .security-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .security-desc {
-            font-size: 0.88rem;
+            font-size: .82rem;
             color: var(--text-secondary);
             line-height: 1.7;
-            margin-bottom: 24px;
         }
-        .security-visual {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: var(--radius);
-            padding: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .security-detail {
+            margin-bottom: 40px;
         }
-
-        /* Confirm dialog visual */
-        .confirm-dialog {
-            text-align: left;
+        .security-detail-title {
+            font-family: var(--font-title);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .confirm-header {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
+        .security-detail-title .icon {
+            color: var(--green);
+            width: 24px;
+            height: 24px;
+        }
+        .security-detail-title.warning .icon {
+            color: var(--orange);
+        }
+        .security-detail-title.danger .icon {
+            color: var(--red);
+        }
+        .security-detail-content {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+        }
+        .security-detail-text {
             color: var(--text-secondary);
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            line-height: 1.9;
+            margin-bottom: 16px;
+            font-size: .9rem;
         }
-        .confirm-body {
-            font-size: 0.8rem;
-            color: var(--text-primary);
+        .security-detail-list {
             margin-bottom: 12px;
         }
-        .confirm-body code {
-            font-family: var(--font-mono);
-            color: var(--orange);
-            background: rgba(255, 107, 53, 0.1);
-            padding: 2px 6px;
-            border-radius: 3px;
-        }
-        .confirm-actions {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-        .confirm-btn {
-            padding: 4px 14px;
-            font-size: 0.75rem;
-            border-radius: var(--radius);
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .confirm-btn.cancel {
-            background: rgba(255, 255, 255, 0.08);
+        .security-detail-list li {
+            padding: 5px 0;
             color: var(--text-secondary);
-        }
-        .confirm-btn.ok {
-            background: var(--green);
-            color: var(--bg-primary);
-        }
-
-        /* Blocked list visual */
-        .blocked-list {
-            text-align: left;
-        }
-        .blocked-item {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            padding: 6px 0;
-            color: var(--red);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-        .blocked-item:last-child {
-            border-bottom: none;
-        }
-        .blocked-item.safe {
-            color: var(--green);
-        }
-        .block-icon {
-            margin-right: 8px;
-        }
-
-        /* Server status visual */
-        .server-status {
-            text-align: left;
-        }
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-        .status-row:last-child {
-            border-bottom: none;
-        }
-        .status-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-        .status-badge {
-            font-family: var(--font-mono);
-            font-size: 0.72rem;
-            padding: 3px 10px;
-            border-radius: var(--radius);
-            font-weight: 600;
-        }
-        .status-badge.enabled {
-            color: var(--green);
-            background: rgba(0, 255, 136, 0.1);
-        }
-        .status-badge.disabled {
-            color: var(--red);
-            background: rgba(255, 68, 68, 0.1);
-        }
-
-        /* ===== Installation Section ===== */
-        .install {
-            background: var(--bg-secondary);
-        }
-        .install-steps {
-            max-width: 700px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-        }
-        .install-step {
+            font-size: .88rem;
             display: flex;
             align-items: flex-start;
-            gap: 24px;
-            padding: 28px;
-            background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: var(--radius-lg);
-            transition: all 0.3s;
+            gap: 10px;
         }
-        .install-step:hover {
-            border-color: rgba(0, 255, 136, 0.2);
-            transform: translateX(4px);
-        }
-        .step-number {
-            font-family: var(--font-title);
-            font-size: 2rem;
-            font-weight: 900;
+        .security-detail-list li .check {
             color: var(--green);
-            opacity: 0.6;
             flex-shrink: 0;
-            line-height: 1;
+            font-weight: bold;
         }
-        .step-content {
-            flex: 1;
-        }
-        .step-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .step-desc {
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            line-height: 1.7;
-        }
-        .inline-code {
-            font-family: var(--font-mono);
-            font-size: 0.82rem;
-            color: var(--green);
-            background: rgba(0, 255, 136, 0.08);
-            padding: 2px 6px;
-            border-radius: 3px;
-        }
-        .step-visual {
+        .security-detail-list li .warn {
+            color: var(--orange);
             flex-shrink: 0;
+            font-weight: bold;
         }
-        .mini-terminal {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px 14px;
-            border-radius: var(--radius);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            white-space: nowrap;
+        .security-detail-list li .cross {
+            color: var(--red);
+            flex-shrink: 0;
+            font-weight: bold;
         }
-        .mt-prompt {
-            color: var(--green);
-            margin-right: 6px;
-        }
-
-        /* ===== Warnings Section ===== */
         .warnings-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-            max-width: 900px;
-            margin: 0 auto;
+            gap: 20px;
+            margin-top: 30px;
         }
         .warning-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, .06);
             border-radius: var(--radius-lg);
-            padding: 28px;
-            border: 1px solid;
+            padding: 24px;
+            transition: all .3s var(--silk);
+        }
+        .warning-card:hover {
+            transform: translateY(-4px);
         }
         .warning-card.caution {
-            background: rgba(255, 107, 53, 0.04);
-            border-color: rgba(255, 107, 53, 0.2);
+            border-left: 3px solid var(--orange);
         }
         .warning-card.danger {
-            background: rgba(255, 68, 68, 0.04);
-            border-color: rgba(255, 68, 68, 0.2);
+            border-left: 3px solid var(--red);
         }
         .warning-header {
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 1.05rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-        .warning-icon {
-            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: .95rem;
         }
         .warning-card.caution .warning-header {
             color: var(--orange);
@@ -1053,145 +1255,137 @@
         .warning-card.danger .warning-header {
             color: var(--red);
         }
-        .warning-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .warning-icon {
+            font-size: 1.1rem;
         }
         .warning-list li {
-            font-size: 0.88rem;
+            padding: 5px 0;
             color: var(--text-secondary);
-            line-height: 1.6;
-            padding-left: 16px;
-            position: relative;
+            font-size: .85rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
         .warning-list li::before {
-            content: '>';
-            position: absolute;
-            left: 0;
-            font-family: var(--font-mono);
-            color: inherit;
-            opacity: 0.5;
+            content: '•';
+            flex-shrink: 0;
         }
 
-        /* ===== Footer ===== */
+        /* ===== FOOTER — 始终在底部 ===== */
         .footer {
+            padding: 36px 0;
+            border-top: 1px solid rgba(255, 255, 255, .05);
             position: relative;
             z-index: 1;
-            padding: 48px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
             background: var(--bg-primary);
+            margin-top: auto;
         }
         .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
             text-align: center;
         }
         .footer-brand {
             font-family: var(--font-title);
-            font-size: 1rem;
+            font-size: .95rem;
             font-weight: 700;
             letter-spacing: 2px;
-            margin-bottom: 20px;
+            margin-bottom: 4px;
         }
-        .footer-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 0.85rem;
+        .footer-info p {
+            font-size: .82rem;
             color: var(--text-secondary);
-            margin-bottom: 20px;
         }
         .footer-highlight {
             color: var(--green);
-            font-weight: 600;
-        }
-        .footer-divider {
-            width: 60px;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.1);
-            margin: 20px auto;
         }
         .footer-copyright {
-            font-size: 0.75rem;
+            font-size: .72rem;
             color: var(--text-secondary);
-            opacity: 0.6;
+            opacity: .6;
+            margin-top: 6px;
         }
 
-        /* ===== Animations ===== */
-        .animate-in {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-        }
-        .animate-in.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
+        /* ===== ANIMATIONS ===== */
         .fade-up {
             opacity: 0;
-            transform: translateY(40px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            transform: translateY(24px);
+            transition: opacity .6s var(--silk), transform .6s var(--silk);
         }
         .fade-up.visible {
             opacity: 1;
             transform: translateY(0);
         }
+        .scale-in {
+            opacity: 0;
+            transform: scale(.92);
+            transition: opacity .6s var(--silk), transform .6s var(--bounce);
+        }
+        .scale-in.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
 
-        /* ===== Responsive ===== */
-        @media (max-width: 1024px) {
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 968px) {
             .features-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            .security-grid {
+            .quick-links-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            .security-card:last-child {
-                grid-column: 1 / -1;
-                max-width: 400px;
-                margin: 0 auto;
+            .security-overview {
+                grid-template-columns: 1fr;
+            }
+            .feature-detail {
+                flex-direction: column !important;
+                gap: 28px;
+            }
+            .warnings-grid {
+                grid-template-columns: 1fr;
+            }
+            .command-syntax {
+                min-width: auto;
             }
             .sources-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            .quick-steps {
-                flex-wrap: wrap;
-            }
-            .qs-arrow {
-                display: none;
+            .command-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
             }
         }
-
-        @media (max-width: 768px) {
+        @media (max-width: 640px) {
             .nav-links {
                 display: none;
-                position: absolute;
-                top: 64px;
-                left: 0;
-                right: 0;
-                flex-direction: column;
-                background: rgba(10, 14, 20, 0.98);
-                padding: 24px;
-                gap: 20px;
-                border-bottom: 1px solid rgba(0, 255, 136, 0.1);
-            }
-            .nav-links.active {
-                display: flex;
             }
             .nav-toggle {
                 display: flex;
             }
-
-            .hero {
-                padding: 100px 20px 60px;
+            .nav-links.active {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: rgba(10, 14, 20, 0.98);
+                padding: 12px 16px;
+                gap: 4px;
+                backdrop-filter: blur(12px);
             }
-            .hero-title {
-                font-size: 1.8rem;
+            .features-grid {
+                grid-template-columns: 1fr;
             }
-            .hero-desc {
-                font-size: 0.95rem;
+            .quick-links-grid {
+                grid-template-columns: 1fr;
             }
-            .hero-meta {
-                gap: 16px;
+            .req-list {
+                grid-template-columns: 1fr;
             }
             .hero-actions {
                 flex-direction: column;
@@ -1199,713 +1393,1199 @@
             }
             .btn {
                 width: 100%;
-                max-width: 280px;
                 justify-content: center;
+                max-width: 280px;
             }
-
-            .section {
-                padding: 64px 0;
+            .hero-stats {
+                gap: 20px;
             }
-            .section-header {
-                margin-bottom: 40px;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-            .security-grid {
-                grid-template-columns: 1fr;
-            }
-            .security-card:last-child {
-                max-width: none;
-            }
-            .sources-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .quick-steps {
-                flex-direction: column;
-            }
-            .req-list {
-                grid-template-columns: 1fr;
-            }
-            .download-btn {
-                padding: 16px 28px;
-            }
-            .download-btn-label {
-                font-size: 1rem;
-            }
-
-            .command-item {
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 14px 16px;
-            }
-            .command-syntax {
-                font-size: 0.8rem;
-            }
-            .command-desc {
-                flex-basis: 100%;
-                order: 3;
-            }
-
-            .install-step {
-                flex-direction: column;
-                gap: 16px;
-            }
-            .step-visual {
-                align-self: flex-start;
-            }
-
-            .warnings-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero-title {
+            .stat-value {
                 font-size: 1.5rem;
-            }
-            .meta-item {
-                font-size: 0.75rem;
-            }
-            .feature-card {
-                padding: 24px 20px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Particle Background -->
+    <!-- ===== CURSOR ===== -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    <div class="scroll-progress" id="scrollProgress"></div>
+    <div class="mouse-glow" id="mouseGlow"></div>
     <canvas id="particles"></canvas>
 
-    <!-- Navigation -->
+    <!-- ===== NAVBAR ===== -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
-            <a href="#" class="nav-logo">
-                <span class="logo-bracket">[</span>
-                <span class="logo-text">SysCmd</span>
-                <span class="logo-bracket">]</span>
-            </a>
-            <div class="nav-links" id="navLinks">
-                <a href="#features" class="nav-link">功能</a>
-                <a href="#commands" class="nav-link">命令</a>
-                <a href="#security" class="nav-link">安全</a>
-                <a href="#install" class="nav-link">安装</a>
-                <a href="#warnings" class="nav-link">注意</a>
+            <div class="nav-logo" onclick="switchPage('home')">
+                <span class="logo-bracket">[</span><span class="logo-text">SysCmd</span><span class="logo-bracket">]</span>
             </div>
-            <button class="nav-toggle" id="navToggle" aria-label="菜单">
+            <div class="nav-links" id="navLinks">
+                <div class="nav-link active" data-page="home" onclick="switchPage('home')">首页</div>
+                <div class="nav-link" data-page="features" onclick="switchPage('features')">功能介绍</div>
+                <div class="nav-link" data-page="commands" onclick="switchPage('commands')">命令文档</div>
+                <div class="nav-link" data-page="download" onclick="switchPage('download')">下载安装</div>
+                <div class="nav-link" data-page="security" onclick="switchPage('security')">安全说明</div>
+            </div>
+            <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
                 <span></span><span></span><span></span>
             </button>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero" id="hero">
-        <div class="hero-content">
-            <div class="hero-badge animate-in">Fabric Mod · v1.3 · MC 1.20.1</div>
-            <h1 class="hero-title animate-in">
-                <span class="title-line">在 Minecraft 中</span>
-                <span class="title-line highlight">执行系统命令</span>
-            </h1>
-            <p class="hero-desc animate-in">
-                SysCmd 是一款超轻量的 Fabric 模组，让你无需退出游戏即可直接执行 Windows CMD 和 PowerShell 命令。
-                <br>告别 Alt+Tab，命令就在眼前。
-            </p>
-            <div class="hero-meta animate-in">
-                <div class="meta-item">
-                    <span class="meta-icon">♦</span>
-                    <span>版本 1.3</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-icon">♦</span>
-                    <span>MC 1.20.1</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-icon">♦</span>
-                    <span>Fabric</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-icon">♦</span>
-                    <span>~0.1 MB</span>
-                </div>
-            </div>
-            <div class="hero-actions animate-in">
-                <a href="#install" class="btn btn-primary">
-                    <span class="btn-icon">►</span>
-                    立即下载
-                </a>
-                <a href="#features" class="btn btn-outline">了解更多</a>
-            </div>
-            <div class="hero-terminal animate-in">
-                <div class="terminal-header">
-                    <span class="terminal-dot red"></span>
-                    <span class="terminal-dot yellow"></span>
-                    <span class="terminal-dot green"></span>
-                    <span class="terminal-title">SysCmd Terminal</span>
-                </div>
-                <div class="terminal-body">
-                    <div class="terminal-line">
-                        <span class="prompt">MC&gt;</span>
-                        <span class="command" id="typewriter"></span>
-                        <span class="cursor">_</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="scroll-indicator">
-            <span class="scroll-arrow">▼</span>
-        </div>
-    </section>
+    <!-- ===== MAIN ===== -->
+    <div class="main-content">
 
-    <!-- Features Section -->
-    <section class="section features" id="features">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">FEATURES</span>
-                <h2 class="section-title">核心功能</h2>
-                <p class="section-desc">九大功能模块，覆盖你在游戏内的一切系统操作需求</p>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card" data-delay="0">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="4 17 10 11 4 5"></polyline>
-                            <line x1="12" y1="19" x2="20" y2="19"></line>
-                        </svg>
+        <!-- HOME -->
+        <div class="page active" id="page-home">
+            <section class="hero">
+                <div class="hero-content">
+                    <div class="hero-badge fade-up">v1.3 · Fabric 模组 · 仅 0.1MB</div>
+                    <h1 class="hero-title">
+                        <span class="title-line fade-up">在 Minecraft 里</span>
+                        <span class="title-line gradient-text fade-up">执行系统命令</span>
+                    </h1>
+                    <p class="hero-desc fade-up">
+                        SysCmd 是一个超轻量的 Minecraft Fabric 模组，让你在游戏内直接执行 Windows CMD 和 PowerShell 命令。
+                        无需切出游戏，30+ 个内置功能，系统操作触手可及。
+                    </p>
+                    <div class="hero-stats fade-up">
+                        <div class="stat-item"><div class="stat-value">30+</div><div class="stat-label">内置命令</div></div>
+                        <div class="stat-item"><div class="stat-value">~0.1MB</div><div class="stat-label">模组大小</div></div>
+                        <div class="stat-item"><div class="stat-value">0.15s</div><div class="stat-label">平均响应</div></div>
+                        <div class="stat-item"><div class="stat-value">3重</div><div class="stat-label">安全防护</div></div>
                     </div>
-                    <h3 class="feature-title">双命令系统</h3>
-                    <p class="feature-desc">同时支持 CMD 和 PowerShell 两种命令环境，一键切换，灵活应对不同场景需求。</p>
-                    <div class="feature-tag">CMD / PowerShell</div>
-                </div>
-                <div class="feature-card" data-delay="100">
-                    <div class="feature-icon cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
+                    <div class="hero-actions fade-up">
+                        <button class="btn btn-primary glow-pulse" onclick="switchPage('download')">立即下载 ↓</button>
+                        <button class="btn btn-outline" onclick="switchPage('commands')">查看命令 →</button>
                     </div>
-                    <h3 class="feature-title">系统信息查询</h3>
-                    <p class="feature-desc">快速查看 CPU、内存、磁盘、网络等系统信息，游戏内即可掌握电脑运行状态。</p>
-                    <div class="feature-tag">System Info</div>
-                </div>
-                <div class="feature-card" data-delay="200">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">文件管理</h3>
-                    <p class="feature-desc">在游戏内浏览、创建、删除文件和目录，无需切出游戏即可完成基本文件操作。</p>
-                    <div class="feature-tag">File Manager</div>
-                </div>
-                <div class="feature-card" data-delay="300">
-                    <div class="feature-icon cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">实用工具箱</h3>
-                    <p class="feature-desc">内置多种实用工具：进程管理、环境变量查看、网络诊断等，一站式解决常见需求。</p>
-                    <div class="feature-tag">Toolbox</div>
-                </div>
-                <div class="feature-card" data-delay="400">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">命令别名</h3>
-                    <p class="feature-desc">为常用命令设置简短别名，减少重复输入，大幅提升操作效率。</p>
-                    <div class="feature-tag">Alias</div>
-                </div>
-                <div class="feature-card" data-delay="500">
-                    <div class="feature-icon cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">脚本执行</h3>
-                    <p class="feature-desc">支持直接执行 .bat、.ps1 等脚本文件，批量操作一气呵成。</p>
-                    <div class="feature-tag">Script Runner</div>
-                </div>
-                <div class="feature-card" data-delay="600">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                            <polyline points="7 3 7 8 15 8"></polyline>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">输出保存</h3>
-                    <p class="feature-desc">命令执行结果可自动保存到文件，方便后续查看和分析。</p>
-                    <div class="feature-tag">Output Save</div>
-                </div>
-                <div class="feature-card" data-delay="700">
-                    <div class="feature-icon cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">失败分析</h3>
-                    <p class="feature-desc">命令执行失败时自动分析错误原因，提供修复建议，降低排错成本。</p>
-                    <div class="feature-tag">Error Analysis</div>
-                </div>
-                <div class="feature-card" data-delay="800">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                    </div>
-                    <h3 class="feature-title">历史记录</h3>
-                    <p class="feature-desc">完整记录所有执行过的命令，支持搜索和快速复用，告别重复输入。</p>
-                    <div class="feature-tag">History</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Download Section -->
-    <section class="section download" id="download">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">DOWNLOAD</span>
-                <h2 class="section-title">下载与安装</h2>
-                <p class="section-desc">选择你喜欢的下载方式，三步即可开始使用</p>
-            </div>
-
-            <!-- Main Download Button -->
-            <div class="download-main">
-                <a href="https://raw.githubusercontent.com/qqq931/syscmdjs/refs/heads/main/syscmd-v1.3nt.jar" class="download-btn" target="_blank" rel="noopener noreferrer">
-                    <span class="download-btn-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                    </span>
-                    <span class="download-btn-text">
-                        <span class="download-btn-label">下载 SysCmd</span>
-                        <span class="download-btn-version">v1.3 · Fabric · MC 1.20.1 · ~0.1MB</span>
-                    </span>
-                </a>
-            </div>
-
-            <!-- Download Sources -->
-            <div class="download-sources">
-                <h3 class="sources-title">其他下载渠道</h3>
-                <div class="sources-grid">
-                    <a href="https://www.curseforge.com/minecraft/mc-mods/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
-                        <span class="source-icon">
-                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                        </span>
-                        <span class="source-name">CurseForge</span>
-                        <span class="source-arrow">↗</span>
-                    </a>
-                    <a href="https://modrinth.com/mod/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
-                        <span class="source-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8v8H8z"/></svg>
-                        </span>
-                        <span class="source-name">Modrinth</span>
-                        <span class="source-arrow">↗</span>
-                    </a>
-                    <a href="https://github.com/qqq931/syscmd" class="source-link" target="_blank" rel="noopener noreferrer">
-                        <span class="source-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-                        </span>
-                        <span class="source-name">GitHub Releases</span>
-                        <span class="source-arrow">↗</span>
-                    </a>
-                    <a href="https://1843383962.share.123pan.cn/123pan/gw8lTd-kmtgv?pwd=scmd" class="source-link" target="_blank" rel="noopener noreferrer">
-                        <span class="source-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                        </span>
-                        <span class="source-name">123网盘</span>
-                        <span class="source-arrow">↗</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Quick Install Steps -->
-            <div class="quick-install">
-                <h3 class="sources-title">快速安装</h3>
-                <div class="quick-steps">
-                    <div class="quick-step">
-                        <div class="qs-number">1</div>
-                        <div class="qs-content">
-                            <h4 class="qs-title">安装 Fabric</h4>
-                            <p class="qs-desc">安装 Minecraft 1.20.1 和 Fabric Loader</p>
+                    <div class="hero-terminal scale-in">
+                        <div class="terminal-header">
+                            <div class="terminal-dot red"></div><div class="terminal-dot yellow"></div><div class="terminal-dot green"></div>
+                            <div class="terminal-title">Minecraft → SysCmd</div>
                         </div>
-                    </div>
-                    <div class="qs-arrow">➡</div>
-                    <div class="quick-step">
-                        <div class="qs-number">2</div>
-                        <div class="qs-content">
-                            <h4 class="qs-title">放入 mods</h4>
-                            <p class="qs-desc">将 jar 文件拖入 .minecraft/mods</p>
-                        </div>
-                    </div>
-                    <div class="qs-arrow">➡</div>
-                    <div class="quick-step">
-                        <div class="qs-number">3</div>
-                        <div class="qs-content">
-                            <h4 class="qs-title">开玩</h4>
-                            <p class="qs-desc">启动游戏，输入 /cmd 即可使用</p>
+                        <div class="terminal-body">
+                            <div><span class="t-prompt">MC></span> <span class="t-cmd" id="typewriter"></span><span class="t-cursor">_</span></div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Requirements -->
-            <div class="requirements">
-                <h3 class="sources-title">环境要求</h3>
-                <div class="req-list">
-                    <div class="req-item">
-                        <span class="req-label">Minecraft</span>
-                        <span class="req-value">1.20.1</span>
-                    </div>
-                    <div class="req-item">
-                        <span class="req-label">Fabric Loader</span>
-                        <span class="req-value">≥ 0.15.0</span>
-                    </div>
-                    <div class="req-item">
-                        <span class="req-label">操作系统</span>
-                        <span class="req-value">Windows</span>
-                    </div>
-                    <div class="req-item">
-                        <span class="req-label">Java</span>
-                        <span class="req-value">17+</span>
+            <section class="quick-links">
+                <div class="container">
+                    <h2 class="quick-links-title fade-up">快速导航</h2>
+                    <div class="quick-links-grid">
+                        <div class="quick-link-card fade-up" onclick="switchPage('features')">
+                            <div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+                            <h3 class="quick-link-title">功能介绍</h3>
+                            <p class="quick-link-desc">6大功能模块详解</p>
+                        </div>
+                        <div class="quick-link-card fade-up" onclick="switchPage('commands')">
+                            <div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                            <h3 class="quick-link-title">命令文档</h3>
+                            <p class="quick-link-desc">30+ 命令完整参考</p>
+                        </div>
+                        <div class="quick-link-card fade-up" onclick="switchPage('download')">
+                            <div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+                            <h3 class="quick-link-title">下载安装</h3>
+                            <p class="quick-link-desc">四步快速上手</p>
+                        </div>
+                        <div class="quick-link-card fade-up" onclick="switchPage('security')">
+                            <div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                            <h3 class="quick-link-title">安全说明</h3>
+                            <p class="quick-link-desc">三重安全机制</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="features-preview">
+                <div class="container">
+                    <div class="page-header" style="padding: 40px 0 50px;">
+                        <span class="page-tag fade-up">FEATURES</span>
+                        <h2 class="page-title fade-up">核心能力</h2>
+                        <p class="page-desc fade-up">不止是命令执行，更是游戏内的系统控制台</p>
+                    </div>
+                    <div class="features-grid">
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                            <h3 class="feature-title">双 Shell 环境</h3>
+                            <p class="feature-desc">CMD + PowerShell 双环境支持，自动检测 pwsh.exe，兼容 Windows PowerShell 5.1 和 PowerShell 7+。</p>
+                        </div>
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                            <h3 class="feature-title">系统信息查询</h3>
+                            <p class="feature-desc">CPU、GPU、内存、磁盘、网络、进程、环境变量等一键查询，游戏内掌握系统全局。</p>
+                        </div>
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                            <h3 class="feature-title">三重安全防护</h3>
+                            <p class="feature-desc">二次确认、危险命令拦截、服务端自动禁用，从源头杜绝误操作和安全风险。</p>
+                        </div>
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                            <h3 class="feature-title">文件操作</h3>
+                            <p class="feature-desc">列目录、读文件、写文件、删文件、搜文件，游戏内直接管理文件系统。</p>
+                        </div>
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                            <h3 class="feature-title">实用工具集</h3>
+                            <p class="feature-desc">截图、锁屏、睡眠、休眠、音量控制、定时关机、剪贴板操作等便捷功能。</p>
+                        </div>
+                        <div class="feature-card fade-up">
+                            <div class="feature-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></div>
+                            <h3 class="feature-title">别名与脚本</h3>
+                            <p class="feature-desc">自定义命令别名简化操作，支持运行 .bat/.ps1 脚本，自动化一键触发。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
-    </section>
 
-    <!-- Commands Section -->
-    <section class="section commands" id="commands">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">REFERENCE</span>
-                <h2 class="section-title">命令速查</h2>
-                <p class="section-desc">常用命令一览，快速上手</p>
-            </div>
-            <div class="commands-list">
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd</span>
-                        <span class="cmd-args">&lt;command&gt;</span>
-                    </div>
-                    <p class="command-desc">在 CMD 环境中执行指定命令</p>
-                    <span class="command-env cmd">CMD</span>
+        <!-- FEATURES -->
+        <div class="page" id="page-features">
+            <div class="container">
+                <div class="page-header">
+                    <span class="page-tag fade-up">FEATURES</span>
+                    <h2 class="page-title fade-up">功能<span class="gradient-text">详解</span></h2>
+                    <p class="page-desc fade-up">6 大功能模块，30+ 内置命令，游戏内的系统控制台</p>
                 </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/ps</span>
-                        <span class="cmd-args">&lt;command&gt;</span>
-                    </div>
-                    <p class="command-desc">在 PowerShell 环境中执行指定命令</p>
-                    <span class="command-env ps">PowerShell</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd alias</span>
-                        <span class="cmd-args">&lt;name&gt; &lt;command&gt;</span>
-                    </div>
-                    <p class="command-desc">创建命令别名，简化常用操作</p>
-                    <span class="command-env alias">Alias</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd run</span>
-                        <span class="cmd-args">&lt;script.bat&gt;</span>
-                    </div>
-                    <p class="command-desc">执行指定的脚本文件</p>
-                    <span class="command-env script">Script</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd history</span>
-                    </div>
-                    <p class="command-desc">查看命令执行历史记录</p>
-                    <span class="command-env history">History</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd sysinfo</span>
-                    </div>
-                    <p class="command-desc">查看系统信息概览</p>
-                    <span class="command-env sysinfo">System</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd save</span>
-                        <span class="cmd-args">&lt;filename&gt;</span>
-                    </div>
-                    <p class="command-desc">将上次命令输出保存到文件</p>
-                    <span class="command-env save">Save</span>
-                </div>
-                <div class="command-item">
-                    <div class="command-syntax">
-                        <span class="cmd-prefix">/cmd analyze</span>
-                    </div>
-                    <p class="command-desc">分析上次失败命令的错误原因</p>
-                    <span class="command-env analyze">Analyze</span>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Security Section -->
-    <section class="section security" id="security">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">SAFETY</span>
-                <h2 class="section-title">安全机制</h2>
-                <p class="section-desc">多重保护，让每一次命令执行都安全可控</p>
-            </div>
-            <div class="security-grid">
-                <div class="security-card">
-                    <div class="security-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="security-title">二次确认</h3>
-                    <p class="security-desc">执行系统命令前会弹出确认提示，防止误操作。你可以选择确认执行或取消操作，确保每一步都在掌控之中。</p>
-                    <div class="security-visual">
-                        <div class="confirm-dialog">
-                            <div class="confirm-header">SysCmd</div>
-                            <div class="confirm-body">确认执行命令?<br><code>del temp.txt</code></div>
-                            <div class="confirm-actions">
-                                <button class="confirm-btn cancel">取消</button>
-                                <button class="confirm-btn ok">确认</button>
+                <div class="feature-detail-section">
+                    <!-- 1 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">COMMAND EXECUTION</span>
+                            <h3 class="feature-detail-title">CMD / PowerShell 双环境</h3>
+                            <p class="feature-detail-text">
+                                同时支持 Windows CMD 和 PowerShell 两种命令环境，自动检测系统中可用的 PowerShell 版本，
+                                优先使用 pwsh.exe (PowerShell 7+)，自动回退到 Windows PowerShell 5.1。
+                                两种模式独立运行，各自维护工作目录状态。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd exec</strong> - 安全执行 CMD 命令（自动转义特殊字符）</li>
+                                <li><strong>/cmd raw</strong> - 原样执行 CMD 命令（不转义）</li>
+                                <li><strong>/cmd pwsh</strong> - 执行 PowerShell 命令（推荐）</li>
+                                <li><strong>/cmd pwsh-raw</strong> - PS 原样执行</li>
+                                <li><strong>/cmd pwsh-admin</strong> - 以管理员权限执行 PS（触发 UAC）</li>
+                                <li>支持管道、重定向、通配符等所有 Shell 特性</li>
+                                <li>命令输出保持原始终端格式，自动适配系统编码</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-ring"></div>
+                                <div class="feature-visual-ring"></div>
+                                <div class="feature-visual-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/><circle cx="18" cy="6" r="3" stroke-dasharray="2 2"/></svg></div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="security-card">
-                    <div class="security-icon warning">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 6a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                    </div>
-                    <h3 class="security-title">危险命令拦截</h3>
-                    <p class="security-desc">内置危险命令黑名单，自动拦截格式化磁盘、删除系统文件等高危操作，从源头杜绝灾难性误操作。</p>
-                    <div class="security-visual">
-                        <div class="blocked-list">
-                            <div class="blocked-item"><span class="block-icon">✖</span> format C:</div>
-                            <div class="blocked-item"><span class="block-icon">✖</span> del /f /s /q C:\*</div>
-                            <div class="blocked-item"><span class="block-icon">✖</span> rd /s /q C:\Windows</div>
-                            <div class="blocked-item safe"><span class="block-icon">✔</span> dir / ipconfig / ...</div>
+
+                    <!-- 2 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">SYSTEM INFO</span>
+                            <h3 class="feature-detail-title">系统信息速查</h3>
+                            <p class="feature-detail-text">
+                                不用切出游戏就能快速了解系统状态。CPU、GPU、内存、磁盘、网络、运行时间等信息一键查询，
+                                游戏内实时监控系统运行状况。所有信息直接调用 Java 管理接口和系统 API 获取，数据准确可靠。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd sysinfo</strong> - 系统信息总览（OS/CPU/内存等）</li>
+                                <li><strong>/cmd cpu</strong> - CPU 详细信息（型号、核心数、使用率）</li>
+                                <li><strong>/cmd gpu</strong> - 显卡信息查询</li>
+                                <li><strong>/cmd mem</strong> - 内存使用详情（堆内存/非堆内存）</li>
+                                <li><strong>/cmd disk</strong> - 磁盘空间使用情况</li>
+                                <li><strong>/cmd uptime</strong> - 系统运行时间</li>
+                                <li><strong>/cmd net</strong> - 网络接口信息</li>
+                                <li><strong>/cmd ping &lt;host&gt;</strong> - 测试网络连通性</li>
+                                <li><strong>/cmd env [key]</strong> - 查看环境变量</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="6" y1="7" x2="18" y2="7"/><line x1="6" y1="11" x2="14" y2="11"/><line x1="6" y1="15" x2="10" y2="15"/></svg></div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="security-card">
-                    <div class="security-icon danger">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                        </svg>
+
+                    <!-- 3 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">PROCESS</span>
+                            <h3 class="feature-detail-title">进程管理</h3>
+                            <p class="feature-detail-text">
+                                游戏内直接查看和管理系统进程。可以列出所有正在运行的进程，支持关键词搜索筛选，
+                                也可以直接终止指定 PID 的进程。终止进程操作需要二次确认，防止误杀。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd ps</strong> - 列出所有运行中的进程</li>
+                                <li><strong>/cmd ps &lt;关键词&gt;</strong> - 按关键词筛选进程</li>
+                                <li><strong>/cmd kill &lt;pid&gt;</strong> - 强制终止指定进程（需确认）</li>
+                                <li>进程列表包含 PID、进程名、内存占用等信息</li>
+                                <li>危险操作需二次确认，30 秒超时自动取消</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/><path d="M12 3v2"/><path d="M12 19v2"/><path d="M3 12h2"/><path d="M19 12h2"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
+                            </div>
+                        </div>
                     </div>
-                    <h3 class="security-title">服务端禁用</h3>
-                    <p class="security-desc">在多人服务器环境中自动禁用所有命令执行功能，防止恶意利用，保障服务器安全与其他玩家体验。</p>
-                    <div class="security-visual">
-                        <div class="server-status">
-                            <div class="status-row">
-                                <span class="status-label">单人模式</span>
-                                <span class="status-badge enabled">已启用</span>
+
+                    <!-- 4 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">FILES</span>
+                            <h3 class="feature-detail-title">文件操作</h3>
+                            <p class="feature-detail-text">
+                                游戏内直接浏览和操作文件系统。支持列目录、查看文件内容、写入文件、创建目录、
+                                搜索文件等常用操作。文件大小超过 100KB 时自动限制显示行数，避免聊天栏刷屏。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd ls [路径]</strong> - 列出目录内容（带图标和文件大小）</li>
+                                <li><strong>/cmd cat &lt;路径&gt;</strong> - 读取并显示文件内容（带行号）</li>
+                                <li><strong>/cmd write &lt;路径&gt; &lt;内容&gt;</strong> - 写入文本文件</li>
+                                <li><strong>/cmd mkdir &lt;路径&gt;</strong> - 创建目录</li>
+                                <li><strong>/cmd del &lt;路径&gt;</strong> - 删除文件/目录（需确认）</li>
+                                <li><strong>/cmd find &lt;路径&gt; &lt;关键词&gt;</strong> - 搜索文件（递归5层）</li>
+                                <li>支持相对路径和绝对路径，自动路径规范化</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M7 12v3"/><path d="M12 12v3"/><path d="M17 12v3"/></svg></div>
                             </div>
-                            <div class="status-row">
-                                <span class="status-label">局域网</span>
-                                <span class="status-badge enabled">已启用</span>
+                        </div>
+                    </div>
+
+                    <!-- 5 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">UTILITIES</span>
+                            <h3 class="feature-detail-title">实用工具集</h3>
+                            <p class="feature-detail-text">
+                                内置多种实用系统工具，不用切出游戏就能完成常用操作。
+                                截图、锁屏、睡眠、休眠、音量控制、定时关机等功能一应俱全。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd screenshot</strong> - 一键截取屏幕并保存</li>
+                                <li><strong>/cmd lock</strong> - 锁定电脑屏幕</li>
+                                <li><strong>/cmd sleep</strong> - 系统进入睡眠（需确认）</li>
+                                <li><strong>/cmd hibernate</strong> - 系统休眠（需确认）</li>
+                                <li><strong>/cmd volume</strong> - 查看/设置/静音 系统音量</li>
+                                <li><strong>/cmd shutdown [秒]</strong> - 定时关机（需确认）</li>
+                                <li><strong>/cmd restart [秒]</strong> - 定时重启（需确认）</li>
+                                <li><strong>/cmd cancel-shutdown</strong> - 取消关机计划</li>
+                                <li><strong>/cmd open &lt;路径/URL&gt;</strong> - 打开文件或网页</li>
+                                <li><strong>/cmd clip &lt;文本&gt;</strong> - 复制文本到剪贴板</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
                             </div>
-                            <div class="status-row">
-                                <span class="status-label">多人服务器</span>
-                                <span class="status-badge disabled">已禁用</span>
+                        </div>
+                    </div>
+
+                    <!-- 6 -->
+                    <div class="feature-detail fade-up">
+                        <div class="feature-detail-content">
+                            <span class="feature-detail-badge">AUTOMATION</span>
+                            <h3 class="feature-detail-title">别名与脚本</h3>
+                            <p class="feature-detail-text">
+                                频繁使用的命令可以设置别名，一键执行复杂操作。别名保存在配置文件中，重启游戏不丢失。
+                                也可以直接运行 .bat 和 .ps1 脚本文件，让自动化任务在游戏内一键触发。
+                            </p>
+                            <ul class="feature-detail-list">
+                                <li><strong>/cmd alias</strong> - 列出所有已定义别名</li>
+                                <li><strong>/cmd alias add &lt;名称&gt; &lt;命令&gt;</strong> - 添加新别名</li>
+                                <li><strong>/cmd alias remove &lt;名称&gt;</strong> - 删除别名</li>
+                                <li><strong>/cmd alias run &lt;名称&gt;</strong> - 执行别名命令</li>
+                                <li><strong>/cmd script run &lt;路径&gt;</strong> - 自动识别类型执行脚本</li>
+                                <li><strong>/cmd script bat &lt;路径&gt;</strong> - 执行 BAT 批处理脚本</li>
+                                <li><strong>/cmd script ps1 &lt;路径&gt;</strong> - 执行 PowerShell 脚本</li>
+                                <li>别名配置文件：config/mc2cmd_aliases.txt</li>
+                            </ul>
+                        </div>
+                        <div class="feature-detail-visual">
+                            <div class="feature-visual-box">
+                                <div class="feature-visual-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/><path d="m9 12 2 2 4-4"/></svg></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- Installation Section -->
-    <section class="section install" id="install">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">GET STARTED</span>
-                <h2 class="section-title">安装方法</h2>
-                <p class="section-desc">三步完成安装，即刻开始使用</p>
+        <!-- COMMANDS -->
+        <div class="page" id="page-commands">
+            <div class="container">
+                <div class="page-header">
+                    <span class="page-tag fade-up">REFERENCE</span>
+                    <h2 class="page-title fade-up">命令<span class="gradient-text">文档</span></h2>
+                    <p class="page-desc fade-up">完整的命令参考手册，支持搜索筛选</p>
+                </div>
+
+                <div class="command-search fade-up">
+                    <input type="text" id="cmdSearch" placeholder="搜索命令...（如 sysinfo、kill、volume）" oninput="filterCommands(this.value)">
+                </div>
+
+                <div id="commandsContainer">
+                    <!-- 命令执行 -->
+                    <div class="command-category fade-up" data-category="exec">
+                        <h3 class="command-category-title">命令执行</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="exec raw cmd command 执行">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd exec</span> <span class="cmd-args">&lt;command&gt;</span></div>
+                                <p class="command-desc">安全执行 CMD 命令（自动转义特殊字符，推荐日常使用）</p>
+                                <span class="command-env cmd">CMD</span>
+                            </div>
+                            <div class="command-item" data-keywords="raw 原样 执行">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd raw</span> <span class="cmd-args">&lt;command&gt;</span></div>
+                                <p class="command-desc">原样执行 CMD 命令（不做转义处理，管道重定向需用此模式）</p>
+                                <span class="command-env cmd">CMD</span>
+                            </div>
+                            <div class="command-item" data-keywords="pwsh powershell ps 执行">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd pwsh</span> <span class="cmd-args">&lt;command&gt;</span></div>
+                                <p class="command-desc">执行 PowerShell 命令（推荐，功能更强大）</p>
+                                <span class="command-env ps">PowerShell</span>
+                            </div>
+                            <div class="command-item" data-keywords="pwsh-raw powershell 原样">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd pwsh-raw</span> <span class="cmd-args">&lt;command&gt;</span></div>
+                                <p class="command-desc">原样执行 PowerShell 命令（不做编码处理）</p>
+                                <span class="command-env ps">PowerShell</span>
+                            </div>
+                            <div class="command-item" data-keywords="pwsh-admin admin uac 管理员">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd pwsh-admin</span> <span class="cmd-args">&lt;command&gt;</span></div>
+                                <p class="command-desc">以管理员权限执行 PowerShell（触发 UAC 弹窗）</p>
+                                <span class="command-env danger">Admin</span>
+                            </div>
+                            <div class="command-item" data-keywords="pwsh-info powershell version 版本">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd pwsh-info</span></div>
+                                <p class="command-desc">查看当前 PowerShell 版本和路径信息</p>
+                                <span class="command-env ps">PowerShell</span>
+                            </div>
+                            <div class="command-item" data-keywords="save 保存 输出 导出">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd save exec</span> <span class="cmd-args">&lt;file&gt; &lt;cmd&gt;</span></div>
+                                <p class="command-desc">执行 CMD 命令并将输出保存到文件</p>
+                                <span class="command-env cmd">CMD</span>
+                            </div>
+                            <div class="command-item" data-keywords="save pwsh 保存 powershell">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd save pwsh</span> <span class="cmd-args">&lt;file&gt; &lt;cmd&gt;</span></div>
+                                <p class="command-desc">执行 PowerShell 命令并将输出保存到文件</p>
+                                <span class="command-env ps">PowerShell</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 系统信息 -->
+                    <div class="command-category fade-up" data-category="system">
+                        <h3 class="command-category-title">系统信息</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="sysinfo 系统 信息 概览">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd sysinfo</span></div>
+                                <p class="command-desc">系统信息总览（OS / CPU / 内存 / 运行时间等）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="cpu 处理器 核心">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd cpu</span></div>
+                                <p class="command-desc">CPU 详细信息（型号、核心数、线程数、使用率）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="gpu 显卡 显示">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd gpu</span></div>
+                                <p class="command-desc">查询显卡信息（需 PowerShell 支持）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="mem memory ram 内存">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd mem</span></div>
+                                <p class="command-desc">内存使用详情（堆内存、非堆内存、使用率）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="disk 磁盘 硬盘 空间">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd disk</span></div>
+                                <p class="command-desc">磁盘空间使用情况（各分区容量/已用/可用）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="uptime 运行时间 开机">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd uptime</span></div>
+                                <p class="command-desc">查看系统运行时间和 JVM 启动时间</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="net network 网络 ip">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd net</span></div>
+                                <p class="command-desc">网络接口信息（IP 地址、网卡信息）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="ping 连通 网络测试">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd ping</span> <span class="cmd-args">&lt;host&gt;</span></div>
+                                <p class="command-desc">测试与指定主机的网络连通性</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                            <div class="command-item" data-keywords="env environment 环境变量">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd env</span> <span class="cmd-args">[key]</span></div>
+                                <p class="command-desc">查看环境变量（指定 key 查看单个，不指定查看全部）</p>
+                                <span class="command-env sys">System</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 进程管理 -->
+                    <div class="command-category fade-up" data-category="process">
+                        <h3 class="command-category-title">进程管理</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="ps process 进程 列表">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd ps</span> <span class="cmd-args">[filter]</span></div>
+                                <p class="command-desc">列出运行中的进程（可加关键词筛选）</p>
+                                <span class="command-env sys">Process</span>
+                            </div>
+                            <div class="command-item" data-keywords="kill 终止 结束 进程">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd kill</span> <span class="cmd-args">&lt;pid&gt;</span></div>
+                                <p class="command-desc">强制终止指定 PID 的进程（需二次确认）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文件操作 -->
+                    <div class="command-category fade-up" data-category="file">
+                        <h3 class="command-category-title">文件操作</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="ls dir list 目录 列表">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd ls</span> <span class="cmd-args">[path]</span></div>
+                                <p class="command-desc">列出目录内容（带文件图标和大小显示）</p>
+                                <span class="command-env file">File</span>
+                            </div>
+                            <div class="command-item" data-keywords="cat type read 读取 文件内容">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd cat</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">读取并显示文件内容（带行号，超过100行限制）</p>
+                                <span class="command-env file">File</span>
+                            </div>
+                            <div class="command-item" data-keywords="write 写入 创建 文件">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd write</span> <span class="cmd-args">&lt;path&gt; &lt;content&gt;</span></div>
+                                <p class="command-desc">写入文本内容到文件（自动创建目录）</p>
+                                <span class="command-env file">File</span>
+                            </div>
+                            <div class="command-item" data-keywords="mkdir mkdirs 创建 目录">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd mkdir</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">创建目录（支持多级目录）</p>
+                                <span class="command-env file">File</span>
+                            </div>
+                            <div class="command-item" data-keywords="del delete remove 删除">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd del</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">删除文件或目录（需二次确认，递归删除）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                            <div class="command-item" data-keywords="find 搜索 查找 文件">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd find</span> <span class="cmd-args">&lt;path&gt; &lt;pattern&gt;</span></div>
+                                <p class="command-desc">搜索文件（递归 5 层，按文件名匹配）</p>
+                                <span class="command-env file">File</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 脚本执行 -->
+                    <div class="command-category fade-up" data-category="script">
+                        <h3 class="command-category-title">脚本与别名</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="script run 脚本 执行">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd script run</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">自动识别脚本类型并执行（.bat / .ps1）</p>
+                                <span class="command-env alias">Script</span>
+                            </div>
+                            <div class="command-item" data-keywords="script bat 批处理 脚本">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd script bat</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">执行 BAT 批处理脚本</p>
+                                <span class="command-env cmd">CMD</span>
+                            </div>
+                            <div class="command-item" data-keywords="script ps1 powershell 脚本">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd script ps1</span> <span class="cmd-args">&lt;path&gt;</span></div>
+                                <p class="command-desc">执行 PowerShell 脚本</p>
+                                <span class="command-env ps">PowerShell</span>
+                            </div>
+                            <div class="command-item" data-keywords="alias 别名 列表">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd alias</span></div>
+                                <p class="command-desc">列出所有已定义的命令别名</p>
+                                <span class="command-env alias">Alias</span>
+                            </div>
+                            <div class="command-item" data-keywords="alias add 添加 创建">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd alias add</span> <span class="cmd-args">&lt;name&gt; &lt;cmd&gt;</span></div>
+                                <p class="command-desc">添加新的命令别名（自动保存到配置文件）</p>
+                                <span class="command-env alias">Alias</span>
+                            </div>
+                            <div class="command-item" data-keywords="alias remove 删除">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd alias remove</span> <span class="cmd-args">&lt;name&gt;</span></div>
+                                <p class="command-desc">删除指定的命令别名</p>
+                                <span class="command-env alias">Alias</span>
+                            </div>
+                            <div class="command-item" data-keywords="alias run 执行 别名">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd alias run</span> <span class="cmd-args">&lt;name&gt;</span></div>
+                                <p class="command-desc">执行指定的别名命令</p>
+                                <span class="command-env alias">Alias</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 实用工具 -->
+                    <div class="command-category fade-up" data-category="util">
+                        <h3 class="command-category-title">实用工具</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="open 打开 文件 网页 url">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd open</span> <span class="cmd-args">&lt;target&gt;</span></div>
+                                <p class="command-desc">打开文件、文件夹或 URL 链接</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="clip clipboard 复制 剪贴板">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd clip</span> <span class="cmd-args">&lt;text&gt;</span></div>
+                                <p class="command-desc">复制文本到系统剪贴板</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="echo 输出 显示 打印">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd echo</span> <span class="cmd-args">&lt;text&gt;</span></div>
+                                <p class="command-desc">在聊天栏输出指定文本</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="screenshot 截图 屏幕 截屏">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd screenshot</span></div>
+                                <p class="command-desc">截取全屏并保存为 PNG 图片到游戏目录</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="lock 锁屏 锁定 屏幕">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd lock</span></div>
+                                <p class="command-desc">立即锁定电脑屏幕</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="sleep 睡眠 休眠">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd sleep</span></div>
+                                <p class="command-desc">系统进入睡眠状态（需二次确认）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                            <div class="command-item" data-keywords="hibernate 休眠">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd hibernate</span></div>
+                                <p class="command-desc">系统进入休眠状态（需二次确认）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                            <div class="command-item" data-keywords="volume 音量 声音">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd volume</span></div>
+                                <p class="command-desc">查看当前系统音量</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="volume set 设置 音量">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd volume set</span> <span class="cmd-args">&lt;0-100&gt;</span></div>
+                                <p class="command-desc">设置系统音量（0-100）</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="volume mute 静音">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd volume mute</span></div>
+                                <p class="command-desc">静音系统音量</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="volume unmute 取消静音">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd volume unmute</span></div>
+                                <p class="command-desc">取消静音</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                            <div class="command-item" data-keywords="shutdown 关机 定时关机">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd shutdown</span> <span class="cmd-args">[seconds]</span></div>
+                                <p class="command-desc">定时关机（默认60秒，0-3600秒可调，需确认）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                            <div class="command-item" data-keywords="restart 重启 重新启动">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd restart</span> <span class="cmd-args">[seconds]</span></div>
+                                <p class="command-desc">定时重启（默认60秒，0-3600秒可调，需确认）</p>
+                                <span class="command-env danger">Danger</span>
+                            </div>
+                            <div class="command-item" data-keywords="cancel-shutdown 取消关机 取消">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd cancel-shutdown</span></div>
+                                <p class="command-desc">取消已计划的关机/重启</p>
+                                <span class="command-env tool">Utility</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 辅助命令 -->
+                    <div class="command-category fade-up" data-category="misc">
+                        <h3 class="command-category-title">辅助命令</h3>
+                        <div class="commands-list">
+                            <div class="command-item" data-keywords="help 帮助 文档">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd help</span></div>
+                                <p class="command-desc">显示完整的命令帮助信息</p>
+                                <span class="command-env sys">Help</span>
+                            </div>
+                            <div class="command-item" data-keywords="why 错误 分析 失败 原因">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd why</span></div>
+                                <p class="command-desc">分析上一次命令失败的原因</p>
+                                <span class="command-env sys">Debug</span>
+                            </div>
+                            <div class="command-item" data-keywords="history 历史 记录">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd history</span></div>
+                                <p class="command-desc">查看最近 20 条命令历史记录（最多保存50条）</p>
+                                <span class="command-env sys">History</span>
+                            </div>
+                            <div class="command-item" data-keywords="history-search 搜索 历史">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd history-search</span> <span class="cmd-args">&lt;keyword&gt;</span></div>
+                                <p class="command-desc">在历史记录中搜索匹配的命令</p>
+                                <span class="command-env sys">History</span>
+                            </div>
+                            <div class="command-item" data-keywords="clear-history 清空 历史">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd clear-history</span></div>
+                                <p class="command-desc">清空所有命令历史记录</p>
+                                <span class="command-env sys">History</span>
+                            </div>
+                            <div class="command-item" data-keywords="confirm 确认 危险操作">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd confirm</span></div>
+                                <p class="command-desc">确认执行待确认的危险操作（30秒内有效）</p>
+                                <span class="command-env danger">Confirm</span>
+                            </div>
+                            <div class="command-item" data-keywords="cancel 取消 危险操作">
+                                <div class="command-syntax"><span class="cmd-prefix">/cmd cancel</span></div>
+                                <p class="command-desc">取消待确认的危险操作</p>
+                                <span class="command-env sys">Confirm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="no-results" id="noResults" style="display:none;">
+                    <p>没有找到匹配的命令，换个关键词试试～</p>
+                </div>
             </div>
-            <div class="install-steps">
-                <div class="install-step">
-                    <div class="step-number">01</div>
-                    <div class="step-content">
-                        <h3 class="step-title">安装 Fabric</h3>
-                        <p class="step-desc">确保已安装 Minecraft 1.20.1 及 Fabric Loader。前往 <span class="inline-code">fabricmc.net</span> 下载对应版本的安装器。</p>
+        </div>
+
+        <!-- DOWNLOAD -->
+        <div class="page" id="page-download">
+            <div class="container">
+                <div class="page-header">
+                    <span class="page-tag fade-up">DOWNLOAD</span>
+                    <h2 class="page-title fade-up">下载<span class="gradient-text">安装</span></h2>
+                    <p class="page-desc fade-up">四步完成安装，即刻开始使用</p>
+                </div>
+
+                <div class="download-section">
+                    <div class="download-main fade-up">
+                        <button class="download-btn glow-pulse" onclick="window.open('https://raw.githubusercontent.com/qqq931/syscmdjs/refs/heads/main/syscmd-v1.3nt.jar', '_blank')">
+                            <div class="download-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+                            <div class="download-btn-text">
+                                <span class="download-btn-label">下载 SysCmd v1.3</span>
+                                <span class="download-btn-version">mc2cmd-1.3.jar · 约 0.1MB · MIT 协议</span>
+                            </div>
+                        </button>
                     </div>
-                    <div class="step-visual">
-                        <div class="mini-terminal">
-                            <span class="mt-prompt">&gt;</span> Fabric Loader 1.20.1 ✔
+
+                    <div class="download-sources">
+                        <h3 class="sources-title fade-up">下载渠道</h3>
+                        <div class="sources-grid">
+                            <div class="source-link fade-up" onclick="window.open('https://github.com/qqq931/syscmd', '_blank')">
+                                <div class="source-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></div>
+                                <span class="source-name">GitHub Releases</span>
+                                <span class="source-arrow">↗</span>
+                            </div>
+                            <div class="source-link fade-up" onclick="window.open('https://modrinth.com/mod/syscmd', '_blank')">
+                                <div class="source-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                                <span class="source-name">Modrinth</span>
+                                <span class="source-arrow">↗</span>
+                            </div>
+                            <div class="source-link fade-up" onclick="window.open('https://www.curseforge.com/minecraft/mc-mods/syscmd', '_blank')">
+                                <div class="source-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></div>
+                                <span class="source-name">CurseForge</span>
+                                <span class="source-arrow">↗</span>
+                            </div>
+                            <div class="source-link fade-up" onclick="window.open('https://www.mcmod.cn/class/25582.html', '_blank')">
+                                <div class="source-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+                                <span class="source-name">MC 百科</span>
+                                <span class="source-arrow">↗</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="install-step">
-                    <div class="step-number">02</div>
-                    <div class="step-content">
-                        <h3 class="step-title">下载模组</h3>
-                        <p class="step-desc">下载 SysCmd v1.3 模组文件（约 0.1MB），将其放入 <span class="inline-code">.minecraft/mods</span> 文件夹中。</p>
-                    </div>
-                    <div class="step-visual">
-                        <div class="mini-terminal">
-                            <span class="mt-prompt">&gt;</span> mc2cmd-1.3.jar → mods/
+
+                    <div class="install-guide">
+                        <h3 class="sources-title fade-up">安装步骤</h3>
+                        <div class="install-steps">
+                            <div class="install-step fade-up">
+                                <div class="step-number">01</div>
+                                <div class="step-content">
+                                    <h3 class="step-title">安装 Fabric Loader</h3>
+                                    <p class="step-desc">
+                                        确保你已经安装了 Minecraft 1.20.1 和 Fabric Loader。
+                                        如果还没有安装，前往 fabricmc.net 下载 Fabric 安装器，
+                                        选择 1.20.1 版本进行安装。Fabric Loader 版本要求 ≥ 0.15.0。
+                                    </p>
+                                    <div class="step-code">Fabric Loader ≥ 0.15.0 · Minecraft 1.20.1</div>
+                                </div>
+                            </div>
+                            <div class="install-step fade-up">
+                                <div class="step-number">02</div>
+                                <div class="step-content">
+                                    <h3 class="step-title">下载并放入 mods 文件夹</h3>
+                                    <p class="step-desc">
+                                        从上方任意渠道下载 SysCmd 模组文件（mc2cmd-1.3.jar），
+                                        将其放入 Minecraft 游戏目录下的 mods 文件夹中。
+                                        通常路径为 %appdata%\.minecraft\mods\。如果没有 mods 文件夹，启动一次 Fabric 客户端后会自动创建。
+                                    </p>
+                                    <div class="step-code">%appdata%\.minecraft\mods\mc2cmd-1.3.jar</div>
+                                </div>
+                            </div>
+                            <div class="install-step fade-up">
+                                <div class="step-number">03</div>
+                                <div class="step-content">
+                                    <h3 class="step-title">启动游戏并验证</h3>
+                                    <p class="step-desc">
+                                        启动 Minecraft 客户端，选择 Fabric 1.20.1 版本进入游戏。
+                                        创建或加入一个单人世界后，打开聊天框输入 /cmd sysinfo 来验证模组是否正常工作。
+                                        如果能看到系统信息输出，说明安装成功。
+                                    </p>
+                                    <div class="step-code">/cmd sysinfo → 显示系统信息 = 安装成功 ✓</div>
+                                </div>
+                            </div>
+                            <div class="install-step fade-up">
+                                <div class="step-number">04</div>
+                                <div class="step-content">
+                                    <h3 class="step-title">开始使用</h3>
+                                    <p class="step-desc">
+                                        输入 /cmd help 查看完整命令列表。你可以使用 /cmd 执行 CMD 命令，
+                                        或 /cmd pwsh 执行 PowerShell 命令。执行前会有二次确认提示，
+                                        点击确认按钮后命令才会真正执行。
+                                    </p>
+                                    <div class="step-code">/cmd help → 查看所有命令 | /cmd exec dir → 列目录</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="install-step">
-                    <div class="step-number">03</div>
-                    <div class="step-content">
-                        <h3 class="step-title">启动游戏</h3>
-                        <p class="step-desc">启动 Minecraft，进入世界后使用 <span class="inline-code">/cmd</span> 或 <span class="inline-code">/ps</span> 命令即可开始使用。</p>
-                    </div>
-                    <div class="step-visual">
-                        <div class="mini-terminal">
-                            <span class="mt-prompt">MC&gt;</span> /cmd dir ✔
+
+                    <div class="requirements">
+                        <h3 class="sources-title fade-up">环境要求</h3>
+                        <div class="req-list">
+                            <div class="req-item fade-up">
+                                <span class="req-label">Minecraft 版本</span>
+                                <span class="req-value">1.20.1</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">Fabric Loader</span>
+                                <span class="req-value">≥ 0.15.0</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">操作系统</span>
+                                <span class="req-value">Windows</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">Java 版本</span>
+                                <span class="req-value">17+</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">模组大小</span>
+                                <span class="req-value">~0.1 MB</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">开源协议</span>
+                                <span class="req-value">MIT</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">权限等级</span>
+                                <span class="req-value">OP (Level 4)</span>
+                            </div>
+                            <div class="req-item fade-up">
+                                <span class="req-label">历史记录</span>
+                                <span class="req-value">最多 50 条</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- Warnings Section -->
-    <section class="section warnings" id="warnings">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag warning-tag">NOTICE</span>
-                <h2 class="section-title">注意事项</h2>
-                <p class="section-desc">使用前请务必了解以下内容</p>
-            </div>
-            <div class="warnings-grid">
-                <div class="warning-card caution">
-                    <div class="warning-header">
-                        <span class="warning-icon">⚠</span>
-                        <span>注意事项</span>
-                    </div>
-                    <ul class="warning-list">
-                        <li>本模组仅在 Windows 系统上可用，不支持 macOS / Linux</li>
-                        <li>执行的命令拥有当前用户的系统权限，请谨慎操作</li>
-                        <li>部分命令可能需要管理员权限才能正常执行</li>
-                        <li>长时间运行的命令可能导致游戏短暂卡顿</li>
-                        <li>建议在单人模式或自己的服务器中使用</li>
-                    </ul>
+        <!-- SECURITY -->
+        <div class="page" id="page-security">
+            <div class="container">
+                <div class="page-header">
+                    <span class="page-tag fade-up">SECURITY</span>
+                    <h2 class="page-title fade-up">安全<span class="gradient-text">机制</span></h2>
+                    <p class="page-desc fade-up">三重防护体系，让每一次命令执行都安全可控</p>
                 </div>
-                <div class="warning-card danger">
-                    <div class="warning-header">
-                        <span class="warning-icon">⛔</span>
-                        <span>禁止用途</span>
+
+                <div class="security-section">
+                    <div class="security-overview">
+                        <div class="security-card fade-up">
+                            <div class="security-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                            <h3 class="security-title">二次确认</h3>
+                            <p class="security-desc">所有危险操作执行前弹出确认，30秒超时自动取消</p>
+                        </div>
+                        <div class="security-card fade-up">
+                            <div class="security-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 6a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                            <h3 class="security-title">危险命令拦截</h3>
+                            <p class="security-desc">内置黑名单自动识别高危操作，从源头杜绝误操作</p>
+                        </div>
+                        <div class="security-card fade-up">
+                            <div class="security-icon danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>
+                            <h3 class="security-title">服务端禁用</h3>
+                            <p class="security-desc">多人服务器环境自动禁用，防止恶意利用</p>
+                        </div>
                     </div>
-                    <ul class="warning-list">
-                        <li>严禁用于破坏他人计算机系统或窃取数据</li>
-                        <li>严禁在公共服务器中未经管理员授权使用</li>
-                        <li>严禁用于绕过系统安全策略或权限限制</li>
-                        <li>严禁用于传播恶意软件或进行网络攻击</li>
-                        <li>违反以上规定造成的一切后果由使用者自行承担</li>
-                    </ul>
+
+                    <!-- 二次确认详解 -->
+                    <div class="security-detail fade-up">
+                        <h3 class="security-detail-title">
+                            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+                            第一层：二次确认机制
+                        </h3>
+                        <div class="security-detail-content">
+                            <p class="security-detail-text">
+                                所有涉及系统变更的危险操作（如删除文件、终止进程、关机重启等）在执行前都会弹出确认提示，
+                                显示即将执行的完整操作内容。你需要在 30 秒内输入 <code>/cmd confirm</code> 确认后，
+                                操作才会真正执行。超时未确认的操作会自动取消，确保不会因为误触或遗忘而造成问题。
+                            </p>
+                            <h4 style="margin-bottom: 10px; color: var(--text-primary);">需要二次确认的操作：</h4>
+                            <ul class="security-detail-list">
+                                <li><span class="warn">⚠</span> <strong>删除文件/目录</strong>（/cmd del）- 防止误删重要数据</li>
+                                <li><span class="warn">⚠</span> <strong>终止进程</strong>（/cmd kill）- 防止误杀关键进程</li>
+                                <li><span class="warn">⚠</span> <strong>定时关机</strong>（/cmd shutdown）- 防止意外关机</li>
+                                <li><span class="warn">⚠</span> <strong>定时重启</strong>（/cmd restart）- 防止意外重启</li>
+                                <li><span class="warn">⚠</span> <strong>系统睡眠</strong>（/cmd sleep）- 防止意外中断游戏</li>
+                                <li><span class="warn">⚠</span> <strong>系统休眠</strong>（/cmd hibernate）- 防止意外中断</li>
+                                <li><span class="check">✓</span> 确认有效期：30 秒，超时自动取消</li>
+                                <li><span class="check">✓</span> 随时可通过 /cmd cancel 取消操作</li>
+                            </ul>
+                            <p class="security-detail-text" style="margin-top: 16px;">
+                                <strong>工作原理：</strong>当你执行危险命令时，模组不会立即执行，而是将操作保存到待确认队列中，
+                                并在聊天栏显示确认提示。每个玩家的待确认操作是独立的，互不干扰。
+                                只有输入 /cmd confirm 后，对应的操作才会被取出并执行。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 危险命令拦截详解 -->
+                    <div class="security-detail fade-up">
+                        <h3 class="security-detail-title warning">
+                            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 6a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                            第二层：危险命令拦截
+                        </h3>
+                        <div class="security-detail-content">
+                            <p class="security-detail-text">
+                                模组内置了危险命令检测机制，能够自动识别可能对系统造成严重损害的高危操作并进行拦截。
+                                即使你不小心输入了危险命令，模组也会在执行前将其拦截，从源头上杜绝灾难性的误操作。
+                                这是比二次确认更底层的安全保障。
+                            </p>
+                            <h4 style="margin-bottom: 10px; color: var(--text-primary);">安全等级划分：</h4>
+                            <ul class="security-detail-list">
+                                <li><span class="cross">✖</span> <strong>禁止级</strong>：格式化磁盘、删除系统目录、破坏引导等 - 直接拦截</li>
+                                <li><span class="warn">⚠</span> <strong>警告级</strong>：修改注册表、修改系统配置等 - 需二次确认 + 额外提醒</li>
+                                <li><span class="warn">⚠</span> <strong>确认级</strong>：删除文件、终止进程、关机等 - 需二次确认</li>
+                                <li><span class="check">✓</span> <strong>安全级</strong>：查看信息、列目录、读文件等 - 直接执行</li>
+                            </ul>
+                            <h4 style="margin: 16px 0 10px; color: var(--text-primary);">常见被拦截的操作：</h4>
+                            <ul class="security-detail-list">
+                                <li><span class="cross">✖</span> 格式化命令（format、fdisk、diskpart 等）</li>
+                                <li><span class="cross">✖</span> 递归删除系统目录（C:\Windows、System32 等）</li>
+                                <li><span class="cross">✖</span> 破坏系统引导（bcdedit /delete、fixmbr 等）</li>
+                                <li><span class="cross">✖</span> 远程控制和后门类命令</li>
+                                <li><span class="check">✓</span> 普通查看命令、信息查询、文件浏览等均可安全使用</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 服务端禁用详解 -->
+                    <div class="security-detail fade-up">
+                        <h3 class="security-detail-title danger">
+                            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
+                            第三层：服务端自动禁用
+                        </h3>
+                        <div class="security-detail-content">
+                            <p class="security-detail-text">
+                                为了保障多人服务器的安全和公平性，SysCmd 在专用服务器（Dedicated Server）环境下会完全禁用所有功能。
+                                这是一个硬编码的安全机制，模组在初始化时会检测运行环境，如果发现是服务端环境，
+                                会直接跳过所有命令注册，确保任何人都无法在服务器上使用本模组。
+                            </p>
+                            <h4 style="margin-bottom: 10px; color: var(--text-primary);">不同环境下的行为：</h4>
+                            <ul class="security-detail-list">
+                                <li><span class="check">✓</span> <strong>单人世界</strong>：全部功能正常可用（需 OP 权限 Level 4）</li>
+                                <li><span class="check">✓</span> <strong>对局域网开放</strong>：仅房主/主机可用，其他玩家无法使用</li>
+                                <li><span class="cross">✖</span> <strong>专用服务器</strong>：功能完全禁用，命令不注册，无法使用</li>
+                                <li><span class="check">✓</span> <strong>权限要求</strong>：需要 OP 等级 4 才能使用所有命令</li>
+                            </ul>
+                            <p class="security-detail-text" style="margin-top: 16px;">
+                                <strong>检测原理：</strong>模组在 Fabric 加载阶段会调用 FabricLoader.getInstance().getEnvironmentType()
+                                检测当前环境类型。如果返回 SERVER，模组会立即设置禁用标记并返回，不进行任何命令注册。
+                                同时在命令注册回调中也会再次检查是否为 DEDICATED 环境，双重保险。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 注意事项 -->
+                    <div class="warnings-grid">
+                        <div class="warning-card caution fade-up">
+                            <div class="warning-header"><span class="warning-icon">⚠</span><span>使用注意事项</span></div>
+                            <ul class="warning-list">
+                                <li>本模组仅在 Windows 系统上可用，不支持 macOS / Linux</li>
+                                <li>执行的命令拥有当前用户的系统权限，请谨慎操作</li>
+                                <li>部分命令可能需要管理员权限才能正常执行</li>
+                                <li>长时间运行的命令可能导致游戏短暂卡顿</li>
+                                <li>建议在单人模式或自己的服务器中使用</li>
+                                <li>命令输出可能包含敏感信息，直播或录屏时注意遮挡</li>
+                                <li>需要 OP 权限等级 4 才能使用所有命令</li>
+                                <li>定期更新模组版本以获取最新的安全修复</li>
+                                <li>输出文件保存在 mc2cmd_output 目录下</li>
+                                <li>别名配置保存在 config/mc2cmd_aliases.txt</li>
+                            </ul>
+                        </div>
+                        <div class="warning-card danger fade-up">
+                            <div class="warning-header"><span class="warning-icon">⛔</span><span>禁止用途</span></div>
+                            <ul class="warning-list">
+                                <li>严禁用于破坏他人计算机系统或窃取数据</li>
+                                <li>严禁在公共服务器中未经管理员授权使用</li>
+                                <li>严禁用于绕过系统安全策略或权限限制</li>
+                                <li>严禁用于传播恶意软件或进行网络攻击</li>
+                                <li>严禁用于任何违法犯罪活动</li>
+                                <li>严禁利用本模组获取不正当利益</li>
+                                <li>严禁用于删除或破坏他人的数据</li>
+                                <li>严禁用于监控或跟踪他人计算机</li>
+                                <li>严禁将本模组用于商业恶意行为</li>
+                                <li>违反以上规定造成的一切后果由使用者自行承担</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <!-- Footer -->
+    </div><!-- .main-content -->
+
+    <!-- ===== FOOTER ===== -->
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <span class="logo-bracket">[</span>
-                    <span class="logo-text">SysCmd</span>
-                    <span class="logo-bracket">]</span>
+                    <span class="logo-bracket">[</span><span class="logo-text">SysCmd</span><span class="logo-bracket">]</span>
                 </div>
                 <div class="footer-info">
-                    <p>开发者：<span class="footer-highlight">杨晨硕</span></p>
-                    <p>基于 <span class="footer-highlight">MIT License</span> 开源协议</p>
-                    <p>Minecraft 1.20.1 · Fabric · v1.3</p>
+                    <p>开发者：<span class="footer-highlight">杨晨硕</span> · 基于 <span class="footer-highlight">MIT License</span> 开源</p>
+                    <p>Minecraft 1.20.1 · Fabric Loader ≥ 0.15.0 · v1.3</p>
                 </div>
-                <div class="footer-divider"></div>
                 <p class="footer-copyright">SysCmd is not affiliated with Mojang Studios or Microsoft.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        /* ===== Particle Background ===== */
-        (function initParticles() {
-            const canvas = document.getElementById('particles');
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            let w, h;
-            const PARTICLE_COUNT = 60;
+        // ============================================================
+        //  PAGE SWITCHING (稳定版)
+        // ============================================================
+        var currentPage = 'home';
 
-            function resize() {
-                w = canvas.width = window.innerWidth;
-                h = canvas.height = window.innerHeight;
+        function switchPage(pageName) {
+            if (pageName === currentPage) return;
+            var oldPage = document.getElementById('page-' + currentPage);
+            var newPage = document.getElementById('page-' + pageName);
+            if (!newPage || !oldPage) return;
+
+            // 导航高亮
+            document.querySelectorAll('.nav-link').forEach(function(link) {
+                link.classList.toggle('active', link.getAttribute('data-page') === pageName);
+            });
+
+            // 切换页面
+            oldPage.classList.remove('active');
+            newPage.classList.add('active');
+
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'auto' });
+
+            // 触发新页面动画
+            setTimeout(function() {
+                triggerPageAnimations(newPage);
+            }, 60);
+
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + pageName);
             }
+            currentPage = pageName;
 
-            function createParticle() {
+            // 关闭移动端菜单
+            var links = document.getElementById('navLinks');
+            if (links) links.classList.remove('active');
+        }
+
+        function triggerPageAnimations(pageEl) {
+            var animatedEls = pageEl.querySelectorAll('.fade-up, .scale-in');
+            if (!('IntersectionObserver' in window)) {
+                animatedEls.forEach(function(el) { el.classList.add('visible'); });
+                return;
+            }
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+            animatedEls.forEach(function(el) {
+                el.classList.remove('visible');
+                observer.observe(el);
+            });
+        }
+
+        function toggleMobileNav() {
+            var links = document.getElementById('navLinks');
+            if (links) links.classList.toggle('active');
+        }
+
+        // ============================================================
+        //  COMMAND SEARCH
+        // ============================================================
+        function filterCommands(keyword) {
+            keyword = keyword.toLowerCase().trim();
+            var categories = document.querySelectorAll('.command-category');
+            var anyVisible = false;
+            categories.forEach(function(cat) {
+                var items = cat.querySelectorAll('.command-item');
+                var catVisible = false;
+                items.forEach(function(item) {
+                    var kw = (item.getAttribute('data-keywords') || '') + ' ' + item.textContent;
+                    var match = !keyword || kw.toLowerCase().indexOf(keyword) !== -1;
+                    item.style.display = match ? '' : 'none';
+                    if (match) catVisible = true;
+                });
+                cat.style.display = catVisible ? '' : 'none';
+                if (catVisible) anyVisible = true;
+            });
+            var noResults = document.getElementById('noResults');
+            if (noResults) noResults.style.display = anyVisible ? 'none' : 'block';
+        }
+
+        // ============================================================
+        //  CUSTOM CURSOR
+        // ============================================================
+        (function initCursor() {
+            var dot = document.getElementById('cursorDot');
+            var ring = document.getElementById('cursorRing');
+            if (!dot || !ring) return;
+            var mx = 0,
+                my = 0,
+                rx = 0,
+                ry = 0;
+            document.addEventListener('mousemove', function(e) {
+                mx = e.clientX;
+                my = e.clientY;
+                dot.style.left = mx + 'px';
+                dot.style.top = my + 'px';
+            });
+
+            function animate() {
+                rx += (mx - rx) * 0.15;
+                ry += (my - ry) * 0.15;
+                ring.style.left = rx + 'px';
+                ring.style.top = ry + 'px';
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            var hoverables = 'a,button,.feature-card,.security-card,.command-item,.source-link,.quick-link-card,.install-step,.req-item,.warning-card,.download-btn,.nav-link,.nav-logo,.install-step';
+            document.querySelectorAll(hoverables).forEach(function(el) {
+                el.addEventListener('mouseenter', function() { ring.classList.add('hover'); });
+                el.addEventListener('mouseleave', function() { ring.classList.remove('hover'); });
+            });
+            document.addEventListener('mousedown', function() {
+                dot.classList.add('click');
+                ring.classList.add('click');
+            });
+            document.addEventListener('mouseup', function() {
+                dot.classList.remove('click');
+                ring.classList.remove('click');
+            });
+        })();
+
+        // ============================================================
+        //  SCROLL PROGRESS
+        // ============================================================
+        (function initScrollProgress() {
+            var bar = document.getElementById('scrollProgress');
+            if (!bar) return;
+
+            function update() {
+                var st = window.pageYOffset || document.documentElement.scrollTop;
+                var dh = document.documentElement.scrollHeight - window.innerHeight;
+                bar.style.width = (dh > 0 ? (st / dh) * 100 : 0) + '%';
+            }
+            window.addEventListener('scroll', update, { passive: true });
+            update();
+        })();
+
+        // ============================================================
+        //  MOUSE GLOW
+        // ============================================================
+        (function initMouseGlow() {
+            var glow = document.getElementById('mouseGlow');
+            if (!glow) return;
+            var gx = 0,
+                gy = 0,
+                tx = 0,
+                ty = 0;
+            document.addEventListener('mousemove', function(e) { tx = e.clientX;
+                ty = e.clientY; });
+
+            function animate() {
+                gx += (tx - gx) * 0.06;
+                gy += (ty - gy) * 0.06;
+                glow.style.left = gx + 'px';
+                glow.style.top = gy + 'px';
+                requestAnimationFrame(animate);
+            }
+            animate();
+        })();
+
+        // ============================================================
+        //  PARTICLES
+        // ============================================================
+        (function initParticles() {
+            var canvas = document.getElementById('particles');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var particles = [];
+            var w, h,
+                COUNT = 45;
+
+            function resize() { w = canvas.width = innerWidth;
+                h = canvas.height = innerHeight; }
+
+            function newP() {
                 return {
                     x: Math.random() * w,
                     y: Math.random() * h,
-                    vx: (Math.random() - 0.5) * 0.4,
-                    vy: (Math.random() - 0.5) * 0.4,
+                    vx: (Math.random() - 0.5) * 0.35,
+                    vy: (Math.random() - 0.5) * 0.35,
                     size: Math.random() * 2 + 0.5,
                     alpha: Math.random() * 0.5 + 0.1,
                     color: Math.random() > 0.7 ? '0, 212, 255' : '0, 255, 136'
                 };
             }
 
-            function init() {
-                resize();
+            function init() { resize();
                 particles = [];
-                for (let i = 0; i < PARTICLE_COUNT; i++) {
-                    particles.push(createParticle());
-                }
-            }
+                for (var i = 0; i < COUNT; i++) particles.push(newP()); }
 
             function draw() {
                 ctx.clearRect(0, 0, w, h);
                 particles.forEach(function(p) {
                     p.x += p.vx;
                     p.y += p.vy;
-
                     if (p.x < 0) p.x = w;
                     if (p.x > w) p.x = 0;
                     if (p.y < 0) p.y = h;
                     if (p.y > h) p.y = 0;
-
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(' + p.color + ',' + p.alpha + ')';
                     ctx.fill();
                 });
-
-                // Draw connections
-                for (let i = 0; i < particles.length; i++) {
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x;
-                        const dy = particles[i].y - particles[j].y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 150) {
+                for (var i = 0; i < particles.length; i++) {
+                    for (var j = i + 1; j < particles.length; j++) {
+                        var dx = particles[i].x - particles[j].x;
+                        var dy = particles[i].y - particles[j].y;
+                        var d = Math.sqrt(dx * dx + dy * dy);
+                        if (d < 110) {
                             ctx.beginPath();
                             ctx.moveTo(particles[i].x, particles[i].y);
                             ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.strokeStyle = 'rgba(0, 255, 136,' + (0.06 * (1 - dist / 150)) + ')';
+                            ctx.strokeStyle = 'rgba(0, 255, 136,' + (0.04 * (1 - d / 110)) + ')';
                             ctx.lineWidth = 0.5;
                             ctx.stroke();
                         }
@@ -1913,163 +2593,67 @@
                 }
                 requestAnimationFrame(draw);
             }
-
             window.addEventListener('resize', resize);
             init();
             draw();
         })();
 
-        /* ===== Typewriter Effect ===== */
+        // ============================================================
+        //  TYPEWRITER
+        // ============================================================
         (function initTypewriter() {
-            const el = document.getElementById('typewriter');
+            var el = document.getElementById('typewriter');
             if (!el) return;
-            const commands = [
-                'ipconfig /all',
-                'systeminfo',
-                'tasklist',
-                'Get-Process | Sort-Object CPU -Descending',
-                'dir C:\\Users',
-                'ping google.com',
-                'netstat -an'
+            var cmds = ['ipconfig /all', 'Get-Process | Sort-Object CPU -Descending', 'dir C:\\Users', 'systeminfo', 'tasklist',
+                'ping google.com', 'netstat -an'
             ];
-            let cmdIndex = 0;
-            let charIndex = 0;
-            let isDeleting = false;
-            let speed = 80;
+            var ci = 0,
+                chi = 0,
+                del = false,
+                speed = 80;
 
             function type() {
-                const current = commands[cmdIndex];
-                if (isDeleting) {
-                    el.textContent = current.substring(0, charIndex - 1);
-                    charIndex--;
-                    speed = 40;
-                } else {
-                    el.textContent = current.substring(0, charIndex + 1);
-                    charIndex++;
-                    speed = 80 + Math.random() * 40;
-                }
-
-                if (!isDeleting && charIndex === current.length) {
-                    speed = 2000;
-                    isDeleting = true;
-                } else if (isDeleting && charIndex === 0) {
-                    isDeleting = false;
-                    cmdIndex = (cmdIndex + 1) % commands.length;
-                    speed = 400;
-                }
-
+                var cur = cmds[ci];
+                if (del) { el.textContent = cur.substring(0, chi - 1);
+                    chi--;
+                    speed = 35; } else { el.textContent = cur.substring(0, chi + 1);
+                    chi++;
+                    speed = 75 + Math.random() * 40; }
+                if (!del && chi === cur.length) { speed = 1800;
+                    del = true; } else if (del && chi === 0) { del = false;
+                    ci = (ci + 1) % cmds.length;
+                    speed = 350; }
                 setTimeout(type, speed);
             }
-            type();
+            setTimeout(type, 600);
         })();
 
-        /* ===== Scroll Animations ===== */
-        (function initScrollAnimations() {
-            // Hero animations
-            const heroElements = document.querySelectorAll('.hero .animate-in');
-            heroElements.forEach(function(el, i) {
-                setTimeout(function() {
-                    el.classList.add('visible');
-                }, 200 + i * 150);
-            });
-
-            // Scroll-triggered animations
-            const observer = new IntersectionObserver(function(entries) {
-                entries.forEach(function(entry) {
-                    if (entry.isIntersecting) {
-                        const delay = parseInt(entry.target.getAttribute('data-delay') || '0', 10);
-                        setTimeout(function() {
-                            entry.target.classList.add('visible');
-                        }, delay);
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
-
-            // Observe feature cards
-            document.querySelectorAll('.feature-card').forEach(function(card) {
-                card.classList.add('fade-up');
-                observer.observe(card);
-            });
-
-            // Observe command items
-            document.querySelectorAll('.command-item').forEach(function(item, i) {
-                item.classList.add('fade-up');
-                item.setAttribute('data-delay', String(i * 80));
-                observer.observe(item);
-            });
-
-            // Observe security cards
-            document.querySelectorAll('.security-card').forEach(function(card, i) {
-                card.classList.add('fade-up');
-                card.setAttribute('data-delay', String(i * 150));
-                observer.observe(card);
-            });
-
-            // Observe install steps
-            document.querySelectorAll('.install-step').forEach(function(step, i) {
-                step.classList.add('fade-up');
-                step.setAttribute('data-delay', String(i * 150));
-                observer.observe(step);
-            });
-
-            // Observe warning cards
-            document.querySelectorAll('.warning-card').forEach(function(card, i) {
-                card.classList.add('fade-up');
-                card.setAttribute('data-delay', String(i * 150));
-                observer.observe(card);
-            });
-
-            // Observe section headers
-            document.querySelectorAll('.section-header').forEach(function(header) {
-                header.classList.add('fade-up');
-                observer.observe(header);
-            });
-        })();
-
-        /* ===== Navbar Scroll Effect ===== */
+        // ============================================================
+        //  NAVBAR SCROLL
+        // ============================================================
         (function initNavbar() {
-            const navbar = document.getElementById('navbar');
-            let lastScroll = 0;
-
+            var nav = document.getElementById('navbar');
             window.addEventListener('scroll', function() {
-                const currentScroll = window.pageYOffset;
-                if (currentScroll > 50) {
-                    navbar.classList.add('scrolled');
-                } else {
-                    navbar.classList.remove('scrolled');
-                }
-                lastScroll = currentScroll;
-            });
+                if (window.pageYOffset > 30) nav.classList.add('scrolled');
+                else nav.classList.remove('scrolled');
+            }, { passive: true });
         })();
 
-        /* ===== Mobile Nav Toggle ===== */
-        (function initMobileNav() {
-            const toggle = document.getElementById('navToggle');
-            const links = document.getElementById('navLinks');
-            if (!toggle || !links) return;
+        // ============================================================
+        //  HASH + INIT
+        // ============================================================
+        window.addEventListener('hashchange', function() {
+            var h = location.hash.slice(1);
+            if (h && document.getElementById('page-' + h)) switchPage(h);
+        });
 
-            toggle.addEventListener('click', function() {
-                links.classList.toggle('active');
-            });
-
-            // Close on link click
-            links.querySelectorAll('.nav-link').forEach(function(link) {
-                link.addEventListener('click', function() {
-                    links.classList.remove('active');
-                });
-            });
-        })();
-
-        /* ===== Smooth Scroll for Anchor Links ===== */
-        document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始首页动画
+            triggerPageAnimations(document.getElementById('page-home'));
+            var h = location.hash.slice(1);
+            if (h && document.getElementById('page-' + h) && h !== 'home') {
+                setTimeout(function() { switchPage(h); }, 120);
+            }
         });
     </script>
 </body>
